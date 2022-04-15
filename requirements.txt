@@ -1,3 +1,6 @@
 gql[requests]
 requests
 feedgen
+flask
+Flask-Limiter
+waitress

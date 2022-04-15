@@ -1,15 +1,113 @@
 from gql import Client, gql
+from email.utils import parseaddr
 from feedgen.feed import FeedGenerator
 from gql.transport.requests import RequestsHTTPTransport
 from random import choice, randint
 from json import loads
 from mimetypes import guess_type
 from requests import head
+from flask import Flask, request, Response
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from functools import wraps
+from time import time
+from hashlib import sha256
+from waitress import serve
+import re
 
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
-EMAIL = None
-PASSWORD = None
-PODCAST_ID = "99aa420b-14d0-4ffc-8e79-a55ed8f793e4"
+
+HOST = "podimo.thijs.sh"
+
+# Setup flask
+app = Flask(__name__)
+# Setup a rate limiter
+limiter = Limiter(app, key_func=get_remote_address)
+
+tokens = dict()
+token_timeout = 3600 # seconds
+
+def example():
+    return f"Example\n------------\nUsername: example@example.com\nPassword: 123456\nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://example%40example.com:123456@{HOST}/feed/12345-abcdef.xml\n\nNote that the username and password should be URL encoded. This can be done with\na tool like https://devpal.co/url-encode/\n" 
+
+def authenticate():
+    return Response(f"401 Unauthorized.\nYou need to login with the correct credentials for Podimo.\n\n{example()}", 401,
+            {'WWW-Authenticate': 'Basic realm="Login Required"', 'Content-Type': 'text/plain'})
+
+# Verify if it is actually an email address
+def is_correct_email_address(username):
+    return '@' in parseaddr(username)[1]
+
+def token_key(request):
+    auth = request.authorization
+    username = str(auth.username)
+    password = str(auth.password)
+    key = sha256(b'~'.join([username.encode('utf-8'), password.encode('utf-8')])).hexdigest()
+    return key
+
+
+def check_auth(username, password):
+    try:
+        username = str(username)
+        password = str(password)
+        if len(username) > 256 or len(password) > 256:
+            return False
+
+        # Check if there is an authentication token already in memory. If so, use that one.
+        # If it is expired, request a new token.
+        key = token_key(request)
+        if key in tokens:
+            _, timestamp = tokens[key]
+            if timestamp < time():
+                del tokens[key]
+            else:
+                return True
+
+        if is_correct_email_address(username):
+            preauth_token = getPreregisterToken()
+            prereg_id = getOnboardingId(preauth_token)
+            token = podimoLogin(username, password, preauth_token, prereg_id)
+
+            tokens[key] = (token, time() + token_timeout)
+            return True
+    except Exception as e:
+        app.logger.debug(f"An error occurred: {e}")
+    return False
+
+def requires_login(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        print(tokens)
+        return f(*args, **kwargs)
+    return decorated
+
+@app.errorhandler(404)
+def not_found(error):
+    return Response(f"404 Not found.\n\n{example()}", 401, {'Content-Type': 'text/plain'})
+
+id_pattern = re.compile('[0-9a-fA-F\-]+')
+@app.route('/feed/<podcast_id>.xml')
+@limiter.limit("3/minute")
+@requires_login
+def serve_feed(podcast_id):
+    # Check if it is a valid podcast id string
+    podcast_id = str(podcast_id)
+    if id_pattern.fullmatch(podcast_id) is None:
+        return Response("Invalid podcast id format", 404, {})
+
+    # Get a list of valid podcasts
+    token, _ = tokens[token_key(request)]
+    try:
+        podcasts = podcastsToRss(getPodcasts(token, podcast_id))
+    except Exception as e:
+        exception = str(e)
+        if "Podcast not found" in exception:
+            return Response("Podcast not found. Are you sure you have the correct ID?", 404, {})
+        return Response("Something went wrong while fetching the podcasts", 500, {})
+    return Response(podcasts, mimetype='text/xml')
 
 def randomHexId(length):
     string = []
@@ -23,13 +121,12 @@ def randomFlyerId():
     b = randint(1000000000000, 9999999999999)
     return str(f"{a}-{b}")
 
-
 def generateHeaders(authorization):
     headers={
-        'user-os': 'android',
-        'user-agent': 'okhttp/4.9.1',
-        'user-version': '2.15.3',
-        'user-locale': 'nl-NL',
+        #'user-os': 'android',
+        #'user-agent': 'okhttp/4.9.1',
+        #'user-version': '2.15.3',
+        #'user-locale': 'nl-NL',
         'user-unique-id': randomHexId(16)
     }
     if authorization:
@@ -84,14 +181,14 @@ def getOnboardingId(preauth_token):
     result = client.execute(query)
     return result['userOnboardingFlow']['id']
 
-def login(preauth_token, prereg_id):
+def podimoLogin(username, password, preauth_token, prereg_id):
     t = RequestsHTTPTransport(
         url=GRAPHQL_URL,
         verify=True,
         retries=3,
         headers=generateHeaders(preauth_token)
     )
-    client = Client(transport=t)
+    client = Client(transport=t, serialize_variables=True)
     query = gql(
             """
             query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
@@ -106,19 +203,19 @@ def login(preauth_token, prereg_id):
             }
             """
     )
-    variables = {"email": EMAIL, "password": PASSWORD, "locale": "nl-NL", "preregisterId": prereg_id}
+    variables = {"email": username, "password": password, "locale": "nl-NL", "preregisterId": prereg_id}
 
     result = client.execute(query, variable_values=variables)
     return result['tokenWithCredentials']['token']
 
-def getPodcasts(token):
+def getPodcasts(token, podcast_id):
     t = RequestsHTTPTransport(
         url=GRAPHQL_URL,
         verify=True,
         retries=3,
         headers=generateHeaders(token)
     )
-    client = Client(transport=t)
+    client = Client(transport=t, serialize_variables=True)
     query = gql(
     """
     query ChannelEpisodesQuery($podcastId: String!, $limit: Int!, $offset: Int!, $sorting: PodcastEpisodeSorting) {
@@ -156,8 +253,8 @@ def getPodcasts(token):
     """
     )
     variables = {
-        "podcastId": PODCAST_ID,
-        "limit": 1000,
+        "podcastId": podcast_id,
+        "limit": 100,
         "offset": 0,
         "sorting": "PUBLISHED_DESCENDING"
     }
@@ -166,9 +263,8 @@ def getPodcasts(token):
     return result
 
 def contentLengthOfUrl(url):
-    return head(url).headers['content-length']
-
-
+    token, _ = tokens[token_key(request)]
+    return head(url, headers=generateHeaders(token)).headers['content-length']
 
 def podcastsToRss(data):
     fg = FeedGenerator()
@@ -192,16 +288,7 @@ def podcastsToRss(data):
         fe.description(episode['description'])
         fe.pubDate(episode['datetime'])
 
-    fg.rss_file(f'{PODCAST_ID}.xml')
-
+    return fg.rss_str(pretty=True)
 
 if __name__ == "__main__":
-    if EMAIL is None or PASSWORD is None or PODCAST_ID is None:
-        raise ValueError("Email, password and podcast id should be defined")
-
-    preauth_token = getPreregisterToken()
-    prereg_id = getOnboardingId(preauth_token)
-    token = login(preauth_token, prereg_id)
-    podcasts = getPodcasts(token)
-
-    podcastsToRss(podcasts)
+    serve(app, host="127.0.0.1", port=12104)
