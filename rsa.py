@@ -1,4 +1,5 @@
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 import os
 from dotenv import load_dotenv
@@ -41,6 +42,36 @@ def read_key():
 
     return private_key, public_key
 
+def get_keys():
+    private_key, public_key = read_key()
+    if private_key is None or public_key is None:
+        private_key, public_key = generate_key()
+        write_key(private_key, public_key)
+    return private_key, public_key
+
+def decrypt(cipertext):
+    private_key, public_key = read_key()
+    if private_key is None:
+        return None
+    private_key = RSA.importKey(private_key)
+    decryptor = PKCS1_OAEP.new(private_key)
+    cipertext = bytes.fromhex(cipertext)
+    return decryptor.decrypt(cipertext).decode('utf-8')
+
+def encrypt(plaintext):
+    private_key, public_key = read_key()
+    if public_key is None:
+        return None
+
+    public_key = RSA.importKey(public_key)
+    encryptor = PKCS1_OAEP.new(public_key)
+    return encryptor.encrypt(bytes(plaintext, 'utf-8')).hex()
+
 if __name__ == '__main__':
-    private_key, public_key = generate_key()
-    write_key(private_key, public_key)
+    private_key, public_key = get_keys()
+    print(private_key)
+    print(public_key)
+
+    hash = encrypt("test:13435")
+    print(hash)
+    print(decrypt(hash))

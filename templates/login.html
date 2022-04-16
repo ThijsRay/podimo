@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head></head>
+    <body>
+        <h1>Get RSA hash</h1>
+        <h2>Login</h2>
+        <form method="post">
+            <input type="text" name="username" placeholder="Username">
+            <input type="password" name="password" placeholder="Password">
+            <input type="submit" value="Login">
+        </form>
+
+        <h2>Encrypt yourself</h2>
+        <p>Concatinate your <pre>username</pre> and <pre>password</pre> seperated by a <pre>:</pre>. Encrypt with the following RSA public key:</p>
+        <textarea>
+            {{ public_key }}
+        </textarea>
+    </body>
+</html>

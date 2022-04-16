@@ -6,7 +6,7 @@ from random import choice, randint
 from json import loads
 from mimetypes import guess_type
 from requests import head
-from flask import Flask, request, Response
+from flask import Flask, request, Response, render_template
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from functools import wraps
@@ -14,6 +14,7 @@ from time import time
 from hashlib import sha256
 from waitress import serve
 import re
+import rsa
 
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
 
@@ -75,6 +76,21 @@ def check_auth(username, password):
 def not_found(error):
     return Response(f"404 Not found.\n\n{example()}", 401, {'Content-Type': 'text/plain'})
 
+@app.route('/login')
+def login():
+    private_key, public_key = rsa.get_keys()
+    return render_template('login.html', public_key=public_key)
+
+@app.route('/login', methods=['POST'])
+def login_post():
+    username = request.form['username']
+    password = request.form['password']
+    if not check_auth(username, password):
+        return Response(f"401 Unauthorized.\nYou need to login with the correct credentials for Podimo.\n\n{example()}", 401, {'Content-Type': 'text/plain'})
+    else:
+        token = rsa.encrypt(username + ":" + password)
+        return Response(token, 200, {'Content-Type': 'text/plain'})
+
 id_pattern = re.compile('[0-9a-fA-F\-]+')
 @app.route('/feed/<username>/<password>/<podcast_id>.xml')
 @limiter.limit("3/minute")
@@ -100,6 +116,13 @@ def serve_feed(username, password, podcast_id):
         print(f"Error while fetching podcasts: {exception}")
         return Response("Something went wrong while fetching the podcasts", 500, {})
     return Response(podcasts, mimetype='text/xml')
+
+@app.route('/feed/<hash>/<podcast_id>.xml')
+@limiter.limit("3/minute")
+def serve_feed_rsa(hash, podcast_id):
+    decryptedHash = rsa.decrypt(hash.decode('utf-8'))
+    username, password = decryptedHash.split(':', 1)[1]
+    return serve_feed(username, password, podcast_id)
 
 def randomHexId(length):
     string = []
