@@ -3,4 +3,6 @@ requests
 feedgen
 flask
 Flask-Limiter
+pycryptodome
+python-dotenv
 waitress
