@@ -25,7 +25,9 @@ app = Flask(__name__)
 limiter = Limiter(app, key_func=get_remote_address)
 
 tokens = dict()
-token_timeout = 3600 # seconds
+feeds = dict()
+token_timeout = 3600 * 24 * 5 # seconds = 5 days
+feed_cache_time = 60 * 15 # seconds = 15 minutes
 
 def example():
     return f"Example\n------------\nUsername: example@example.com\nPassword: this-is-my-password\nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml\n\nNote that the username and password should be URL encoded. This can be done with\na tool like https://devpal.co/url-encode/\n" 
@@ -90,7 +92,7 @@ def serve_feed(username, password, podcast_id):
     # Get a list of valid podcasts
     token, _ = tokens[token_key(username, password)]
     try:
-        podcasts = podcastsToRss(username, password, getPodcasts(token, podcast_id))
+        podcasts = podcastsToRss(username, password, podcast_id, getPodcasts(token, podcast_id))
     except Exception as e:
         exception = str(e)
         if "Podcast not found" in exception:
@@ -256,29 +258,40 @@ def contentLengthOfUrl(username, password, url):
     token, _ = tokens[token_key(username, password)]
     return head(url, headers=generateHeaders(token)).headers['content-length']
 
-def podcastsToRss(username, password, data):
-    fg = FeedGenerator()
-    fg.load_extension('podcast')
+def podcastsToRss(username, password, podcast_id, data):
+    key = (token_key(username, password), podcast_id)
+    if key in feeds:
+        feed, timestamp = feeds[key]
+        if timestamp < time():
+            del feeds[key]
+        else:
+            return feed
+    else:
+        fg = FeedGenerator()
+        fg.load_extension('podcast')
 
-    podcast = data['podcast']
-    fg.title(podcast['title'])
-    fg.description(podcast['description'])
-    fg.link(href=podcast['webAddress'], rel='alternate')
-    fg.image(podcast['images']['coverImageUrl'])
-    fg.language(podcast['language'])
-    fg.author({'name': podcast['authorName']})
-    episodes = data['episodes']
-    for episode in episodes:
-        fe = fg.add_entry()
-        fe.title(episode['title'])
-        url = episode['streamMedia']['url']
-        mt, enc = guess_type(url)
-        fe.enclosure(url, contentLengthOfUrl(username, password, url), mt)
-        fe.podcast.itunes_duration(episode['streamMedia']['duration'])
-        fe.description(episode['description'])
-        fe.pubDate(episode['datetime'])
+        podcast = data['podcast']
+        fg.title(podcast['title'])
+        fg.description(podcast['description'])
+        fg.link(href=podcast['webAddress'], rel='alternate')
+        fg.image(podcast['images']['coverImageUrl'])
+        fg.language(podcast['language'])
+        fg.author({'name': podcast['authorName']})
+        episodes = data['episodes']
+        for episode in episodes:
+            fe = fg.add_entry()
+            fe.title(episode['title'])
+            url = episode['streamMedia']['url']
+            mt, enc = guess_type(url)
+            fe.enclosure(url, contentLengthOfUrl(username, password, url), mt)
+            fe.podcast.itunes_duration(episode['streamMedia']['duration'])
+            fe.description(episode['description'])
+            fe.pubDate(episode['datetime'])
 
-    return fg.rss_str(pretty=True)
+        feed = fg.rss_str(pretty=True)
+        expiry = time() + feed_cache_time
+        feeds[key] = (feed, expiry)
+        return feed
 
 if __name__ == "__main__":
     serve(app, host="127.0.0.1", port=12104)
