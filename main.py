@@ -31,7 +31,10 @@ token_timeout = 3600 * 24 * 5 # seconds = 5 days
 feed_cache_time = 60 * 15 # seconds = 15 minutes
 
 def example():
-    return f"Example\n------------\nUsername: example@example.com\nPassword: this-is-my-password\nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml\n\nNote that the username and password should be URL encoded. This can be done with\na tool like https://devpal.co/url-encode/\n" 
+    return f"Example\n------------\nUsername: example@example.com\nPassword: this-is-my-password\nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml\n\nNote that the username and password should be URL encoded. This can be done with\na tool like https://devpal.co/url-encode/\n\n Authentication using an encrypted token is also possible. See https://{HOST}/login" 
+
+def example_rsa(token):
+    return f"Example\n------------\nToken: {token} \nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://{HOST}/feed/{token}/12345-abcdef.xml\n" 
 
 def authenticate():
     return Response(f"401 Unauthorized.\nYou need to login with the correct credentials for Podimo.\n\n{example()}", 401,
@@ -89,7 +92,7 @@ def login_post():
         return Response(f"401 Unauthorized.\nYou need to login with the correct credentials for Podimo.\n\n{example()}", 401, {'Content-Type': 'text/plain'})
     else:
         token = rsa.encrypt(username + ":" + password)
-        return Response(token, 200, {'Content-Type': 'text/plain'})
+        return Response(f"200 Success \n\n{example_rsa(token)}", 200, {'Content-Type': 'text/plain'})
 
 id_pattern = re.compile('[0-9a-fA-F\-]+')
 @app.route('/feed/<username>/<password>/<podcast_id>.xml')
@@ -120,8 +123,13 @@ def serve_feed(username, password, podcast_id):
 @app.route('/feed/<hash>/<podcast_id>.xml')
 @limiter.limit("3/minute")
 def serve_feed_rsa(hash, podcast_id):
-    decryptedHash = rsa.decrypt(hash.decode('utf-8'))
-    username, password = decryptedHash.split(':', 1)[1]
+    print(hash)
+    # Decode utf-8
+    hash = str(hash)
+
+    decryptedHash = rsa.decrypt(hash)
+    print(decryptedHash.split(':', 1))
+    username, password = decryptedHash.split(':', 1)
     return serve_feed(username, password, podcast_id)
 
 def randomHexId(length):
