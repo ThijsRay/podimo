@@ -4,3 +4,4 @@ feedgen
 flask
 Flask-Limiter
 waitress
+python-dotenv
