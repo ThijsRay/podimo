@@ -273,7 +273,7 @@ def podcastsToRss(username, password, podcast_id, data):
         podcast = data['podcast']
         fg.title(podcast['title'])
         fg.description(podcast['description'])
-        fg.link(href=podcast['webAddress'], rel='alternate')
+        fg.link(href=f"https://podimo.com/shows/{podcast_id}", rel='alternate')
         fg.image(podcast['images']['coverImageUrl'])
         fg.language(podcast['language'])
         fg.author({'name': podcast['authorName']})
