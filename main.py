@@ -1,51 +1,77 @@
+import quart.flask_patch
+import asyncio
+import re
 from gql import Client, gql
 from email.utils import parseaddr
 from feedgen.feed import FeedGenerator
-from gql.transport.requests import RequestsHTTPTransport
+from gql.transport.aiohttp import AIOHTTPTransport
 from random import choice, randint
 from json import loads
 from mimetypes import guess_type
-from requests import head
-from flask import Flask, request, Response
+from aiohttp import ClientSession
+from quart import Quart, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from functools import wraps
 from time import time
 from hashlib import sha256
-from waitress import serve
-import re
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
 
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
 
 HOST = "podimo.thijs.sh"
 
-# Setup flask
-app = Flask(__name__)
+# Setup Quart
+app = Quart(__name__)
 # Setup a rate limiter
 limiter = Limiter(app, key_func=get_remote_address)
 
 tokens = dict()
 feeds = dict()
-token_timeout = 3600 * 24 * 5 # seconds = 5 days
-feed_cache_time = 60 * 15 # seconds = 15 minutes
+token_timeout = 3600 * 24 * 5  # seconds = 5 days
+feed_cache_time = 60 * 15  # seconds = 15 minutes
+
 
 def example():
-    return f"Example\n------------\nUsername: example@example.com\nPassword: this-is-my-password\nPodcast ID: 12345-abcdef\n\nThe URL will be\nhttps://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml\n\nNote that the username and password should be URL encoded. This can be done with\na tool like https://devpal.co/url-encode/\n" 
+    return f"""Example
+------------
+Username: example@example.com
+Password: this-is-my-password
+Podcast ID: 12345-abcdef
+
+The URL will be
+https://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml
+
+Note that the username and password should be URL encoded. This can be done with
+a tool like https://devpal.co/url-encode/
+"""
+
 
 def authenticate():
-    return Response(f"401 Unauthorized.\nYou need to login with the correct credentials for Podimo.\n\n{example()}", 401,
-            {'Content-Type': 'text/plain'})
+    return Response(
+        f"""401 Unauthorized.
+You need to login with the correct credentials for Podimo.
+
+{example()}""",
+        401,
+        {"Content-Type": "text/plain"},
+    )
+
 
 # Verify if it is actually an email address
 def is_correct_email_address(username):
-    return '@' in parseaddr(username)[1]
+    return "@" in parseaddr(username)[1]
+
 
 def token_key(username, password):
-    key = sha256(b'~'.join([username.encode('utf-8'), password.encode('utf-8')])).hexdigest()
+    key = sha256(
+        b"~".join([username.encode("utf-8"), password.encode("utf-8")])
+    ).hexdigest()
     return key
 
 
-def check_auth(username, password):
+async def check_auth(username, password):
     try:
         if len(username) > 256 or len(password) > 256:
             return False
@@ -61,204 +87,220 @@ def check_auth(username, password):
                 return True
 
         if is_correct_email_address(username):
-            preauth_token = getPreregisterToken()
-            prereg_id = getOnboardingId(preauth_token)
-            token = podimoLogin(username, password, preauth_token, prereg_id)
+            preauth_token = await getPreregisterToken()
+            prereg_id = await getOnboardingId(preauth_token)
+            token = await podimoLogin(username, password, preauth_token, prereg_id)
 
             tokens[key] = (token, time() + token_timeout)
             return True
     except Exception as e:
-        app.logger.debug(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
     return False
 
-@app.errorhandler(404)
-def not_found(error):
-    return Response(f"404 Not found.\n\n{example()}", 401, {'Content-Type': 'text/plain'})
 
-id_pattern = re.compile('[0-9a-fA-F\-]+')
-@app.route('/feed/<username>/<password>/<podcast_id>.xml')
+@app.errorhandler(404)
+async def not_found(error):
+    return Response(
+        f"404 Not found.\n\n{example()}", 401, {"Content-Type": "text/plain"}
+    )
+
+
+id_pattern = re.compile("[0-9a-fA-F\-]+")
+
+
+@app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 @limiter.limit("3/minute")
-def serve_feed(username, password, podcast_id):
+async def serve_feed(username, password, podcast_id):
     # Authenticate
-    username = str(username)
-    password = str(password)
-    if not check_auth(username, password):
+    if not await check_auth(username, password):
         return authenticate()
+
     # Check if it is a valid podcast id string
-    podcast_id = str(podcast_id)
     if id_pattern.fullmatch(podcast_id) is None:
         return Response("Invalid podcast id format", 404, {})
 
     # Get a list of valid podcasts
     token, _ = tokens[token_key(username, password)]
     try:
-        podcasts = podcastsToRss(username, password, podcast_id, getPodcasts(token, podcast_id))
+        podcasts = await podcastsToRss(
+            username, password, podcast_id, await getPodcasts(token, podcast_id)
+        )
     except Exception as e:
         exception = str(e)
         if "Podcast not found" in exception:
-            return Response("Podcast not found. Are you sure you have the correct ID?", 404, {})
+            return Response(
+                "Podcast not found. Are you sure you have the correct ID?", 404, {}
+            )
         print(f"Error while fetching podcasts: {exception}")
         return Response("Something went wrong while fetching the podcasts", 500, {})
-    return Response(podcasts, mimetype='text/xml')
+    return Response(podcasts, mimetype="text/xml")
+
 
 def randomHexId(length):
     string = []
-    hex_chars = list('1234567890abcdef')
+    hex_chars = list("1234567890abcdef")
     for i in range(length):
         string.append(choice(hex_chars))
     return "".join(string)
+
 
 def randomFlyerId():
     a = randint(1000000000000, 9999999999999)
     b = randint(1000000000000, 9999999999999)
     return str(f"{a}-{b}")
 
+
 def generateHeaders(authorization):
-    headers={
+    headers = {
         #'user-os': 'android',
         #'user-agent': 'okhttp/4.9.1',
         #'user-version': '2.15.3',
         #'user-locale': 'nl-NL',
-        'user-unique-id': randomHexId(16)
+        "user-unique-id": randomHexId(16)
     }
     if authorization:
-        headers['authorization'] = authorization
+        headers["authorization"] = authorization
     return headers
 
-def getPreregisterToken():
-    t = RequestsHTTPTransport(
-        url=GRAPHQL_URL,
-        verify=True,
-        retries=3,
-        headers=generateHeaders(None)
-    )
-    client = Client(transport=t)
-    query = gql(
+
+async def getPreregisterToken():
+    t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(None))
+    async with Client(transport=t) as client:
+        query = gql(
             """
-            query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $region: String, $appsFlyerId: String) {
-                tokenWithPreregisterUser(
+                query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $region: String, $appsFlyerId: String) {
+                    tokenWithPreregisterUser(
+                        locale: $locale
+                        referenceUser: $referenceUser
+                        region: $region
+                        source: WEB
+                        appsFlyerId: $appsFlyerId
+                    ) {
+                        token
+                    }
+                }
+                """
+        )
+        variables = {"locale": "nl-NL", "region": "nl", "appsFlyerId": randomFlyerId()}
+        result = await client.execute(query, variable_values=variables)
+        return result["tokenWithPreregisterUser"]["token"]
+
+
+async def getOnboardingId(preauth_token):
+    t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(preauth_token))
+    async with Client(transport=t) as client:
+        query = gql(
+            """
+                query OnboardingQuery {
+                    userOnboardingFlow {
+                        id
+                    }
+                }
+                """
+        )
+        result = await client.execute(query)
+        return result["userOnboardingFlow"]["id"]
+
+
+async def podimoLogin(username, password, preauth_token, prereg_id):
+    t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(preauth_token))
+    async with Client(transport=t, serialize_variables=True) as client:
+        query = gql(
+            """
+                query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
+                    tokenWithCredentials(
+                    email: $email
+                    password: $password
                     locale: $locale
-                    referenceUser: $referenceUser
-                    region: $region
-                    source: WEB
-                    appsFlyerId: $appsFlyerId
+                    preregisterId: $preregisterId
                 ) {
                     token
+                  }
                 }
-            }
-            """
-    )
-    variables = {"locale": "nl-NL", "region": "nl", "appsFlyerId": randomFlyerId()}
-
-    result = client.execute(query, variable_values=variables)
-    return result['tokenWithPreregisterUser']['token']
-
-def getOnboardingId(preauth_token):
-    t = RequestsHTTPTransport(
-        url=GRAPHQL_URL,
-        verify=True,
-        retries=3,
-        headers=generateHeaders(preauth_token)
-    )
-    client = Client(transport=t)
-    query = gql(
-            """
-            query OnboardingQuery {
-                userOnboardingFlow {
-                    id
-                }
-            }
-            """
-    )
-    result = client.execute(query)
-    return result['userOnboardingFlow']['id']
-
-def podimoLogin(username, password, preauth_token, prereg_id):
-    t = RequestsHTTPTransport(
-        url=GRAPHQL_URL,
-        verify=True,
-        retries=3,
-        headers=generateHeaders(preauth_token)
-    )
-    client = Client(transport=t, serialize_variables=True)
-    query = gql(
-            """
-            query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
-                tokenWithCredentials(
-                email: $email
-                password: $password
-                locale: $locale
-                preregisterId: $preregisterId
-            ) {
-                token
-              }
-            }
-            """
-    )
-    variables = {"email": username, "password": password, "locale": "nl-NL", "preregisterId": prereg_id}
-
-    result = client.execute(query, variable_values=variables)
-    return result['tokenWithCredentials']['token']
-
-def getPodcasts(token, podcast_id):
-    t = RequestsHTTPTransport(
-        url=GRAPHQL_URL,
-        verify=True,
-        retries=3,
-        headers=generateHeaders(token)
-    )
-    client = Client(transport=t, serialize_variables=True)
-    query = gql(
-    """
-    query ChannelEpisodesQuery($podcastId: String!, $limit: Int!, $offset: Int!, $sorting: PodcastEpisodeSorting) {
-      episodes: podcastEpisodes(
-        podcastId: $podcastId
-        converted: true
-        published: true
-        limit: $limit
-        offset: $offset
-        sorting: $sorting
-      ) {
-        ...EpisodeBase
-      }
-      podcast: podcastById(podcastId: $podcastId) {
-        title
-        description
-        webAddress
-        authorName
-        language
-        images {
-            coverImageUrl
+                """
+        )
+        variables = {
+            "email": username,
+            "password": password,
+            "locale": "nl-NL",
+            "preregisterId": prereg_id,
         }
-      }
-    }
 
-    fragment EpisodeBase on PodcastEpisode {
-      description
-      datetime
-      title
-      streamMedia {
-        duration
-        url
-      }
-    }
-    """
-    )
-    variables = {
-        "podcastId": podcast_id,
-        "limit": 100,
-        "offset": 0,
-        "sorting": "PUBLISHED_DESCENDING"
-    }
+        result = await client.execute(query, variable_values=variables)
+        return result["tokenWithCredentials"]["token"]
 
-    result = client.execute(query, variable_values=variables)
-    return result
 
-def contentLengthOfUrl(username, password, url):
+async def getPodcasts(token, podcast_id):
+    t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(token))
+    async with Client(transport=t, serialize_variables=True) as client:
+        query = gql(
+            """
+        query ChannelEpisodesQuery($podcastId: String!, $limit: Int!, $offset: Int!, $sorting: PodcastEpisodeSorting) {
+          episodes: podcastEpisodes(
+            podcastId: $podcastId
+            converted: true
+            published: true
+            limit: $limit
+            offset: $offset
+            sorting: $sorting
+          ) {
+            ...EpisodeBase
+          }
+          podcast: podcastById(podcastId: $podcastId) {
+            title
+            description
+            webAddress
+            authorName
+            language
+            images {
+                coverImageUrl
+            }
+          }
+        }
+
+        fragment EpisodeBase on PodcastEpisode {
+          description
+          datetime
+          title
+          streamMedia {
+            duration
+            url
+          }
+        }
+        """
+        )
+        variables = {
+            "podcastId": podcast_id,
+            "limit": 100,
+            "offset": 0,
+            "sorting": "PUBLISHED_DESCENDING",
+        }
+
+        result = await client.execute(query, variable_values=variables)
+        return result
+
+
+async def contentLengthOfUrl(username, password, url):
     token, _ = tokens[token_key(username, password)]
-    return head(url, headers=generateHeaders(token)).headers['content-length']
+    async with ClientSession() as session:
+        async with session.head(url, headers=generateHeaders(token)) as response:
+            return response.headers["content-length"]
 
-def podcastsToRss(username, password, podcast_id, data):
+
+async def addFeedEntry(fg, episode, username, password):
+    fe = fg.add_entry()
+    fe.title(episode["title"])
+    fe.podcast.itunes_duration(episode["streamMedia"]["duration"])
+    fe.description(episode["description"])
+    fe.pubDate(episode["datetime"])
+
+    url = episode["streamMedia"]["url"]
+    mt, enc = guess_type(url)
+    content_length = await contentLengthOfUrl(username, password, url)
+    fe.enclosure(url, content_length, mt)
+
+
+async def podcastsToRss(username, password, podcast_id, data):
     key = (token_key(username, password), podcast_id)
     if key in feeds:
         feed, timestamp = feeds[key]
@@ -268,30 +310,32 @@ def podcastsToRss(username, password, podcast_id, data):
             return feed
     else:
         fg = FeedGenerator()
-        fg.load_extension('podcast')
+        fg.load_extension("podcast")
 
-        podcast = data['podcast']
-        fg.title(podcast['title'])
-        fg.description(podcast['description'])
-        fg.link(href=f"https://podimo.com/shows/{podcast_id}", rel='alternate')
-        fg.image(podcast['images']['coverImageUrl'])
-        fg.language(podcast['language'])
-        fg.author({'name': podcast['authorName']})
-        episodes = data['episodes']
-        for episode in episodes:
-            fe = fg.add_entry()
-            fe.title(episode['title'])
-            url = episode['streamMedia']['url']
-            mt, enc = guess_type(url)
-            fe.enclosure(url, contentLengthOfUrl(username, password, url), mt)
-            fe.podcast.itunes_duration(episode['streamMedia']['duration'])
-            fe.description(episode['description'])
-            fe.pubDate(episode['datetime'])
+        podcast = data["podcast"]
+        fg.title(podcast["title"])
+        fg.description(podcast["description"])
+        fg.link(href=f"https://podimo.com/shows/{podcast_id}", rel="alternate")
+        fg.image(podcast["images"]["coverImageUrl"])
+        fg.language(podcast["language"])
+        fg.author({"name": podcast["authorName"]})
+        episodes = data["episodes"]
+
+        await asyncio.gather(
+            *[addFeedEntry(fg, episode, username, password) for episode in episodes]
+        )
 
         feed = fg.rss_str(pretty=True)
         expiry = time() + feed_cache_time
         feeds[key] = (feed, expiry)
         return feed
 
+
+async def main():
+    config = Config()
+    config.bind = ["127.0.0.1:12104"]
+    await serve(app, config)
+
+
 if __name__ == "__main__":
-    serve(app, host="127.0.0.1", port=12104)
+    asyncio.run(main())

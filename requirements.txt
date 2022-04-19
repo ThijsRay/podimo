@@ -1,6 +1,5 @@
-gql[requests]
-requests
+gql[aiohttp]
 feedgen
-flask
+quart
 Flask-Limiter
-waitress
+hypercorn
