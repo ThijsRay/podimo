@@ -280,14 +280,20 @@ async def getPodcasts(token, podcast_id):
         return result
 
 
-async def contentLengthOfUrl(username, password, url):
-    token, _ = tokens[token_key(username, password)]
-    async with ClientSession() as session:
-        async with session.head(url, headers=generateHeaders(token)) as response:
-            return response.headers["content-length"]
+async def urlHeadInfo(session, url):
+    async with session.head(url, allow_redirects=True, headers=generateHeaders(None)) as response:
+        content_length = 0
+        content_type, _ = guess_type(url)
+        if "content-length" in response.headers:
+            content_length = response.headers["content-length"]
+        if content_type == None and "content-type" in response.headers:
+            content_type = response.headers["content-type"]
+        else:
+            content_type = "audio/mpeg"
+        return (content_length, content_type)
 
 
-async def addFeedEntry(fg, episode, username, password):
+async def addFeedEntry(fg, episode, session):
     fe = fg.add_entry()
     fe.title(episode["title"])
     fe.podcast.itunes_duration(episode["streamMedia"]["duration"])
@@ -295,9 +301,8 @@ async def addFeedEntry(fg, episode, username, password):
     fe.pubDate(episode["datetime"])
 
     url = episode["streamMedia"]["url"]
-    mt, enc = guess_type(url)
-    content_length = await contentLengthOfUrl(username, password, url)
-    fe.enclosure(url, content_length, mt)
+    content_length, content_type = await urlHeadInfo(session, url)
+    fe.enclosure(url, content_length, content_type)
 
 
 async def podcastsToRss(username, password, podcast_id, data):
@@ -321,9 +326,10 @@ async def podcastsToRss(username, password, podcast_id, data):
         fg.author({"name": podcast["authorName"]})
         episodes = data["episodes"]
 
-        await asyncio.gather(
-            *[addFeedEntry(fg, episode, username, password) for episode in episodes]
-        )
+        async with ClientSession() as session:
+            await asyncio.gather(
+                *[addFeedEntry(fg, episode, session) for episode in episodes]
+            )
 
         feed = fg.rss_str(pretty=True)
         expiry = time() + feed_cache_time
