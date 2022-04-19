@@ -281,7 +281,9 @@ async def getPodcasts(token, podcast_id):
 
 
 async def urlHeadInfo(session, url):
-    async with session.head(url, allow_redirects=True, headers=generateHeaders(None)) as response:
+    async with session.head(
+        url, allow_redirects=True, headers=generateHeaders(None)
+    ) as response:
         content_length = 0
         content_type, _ = guess_type(url)
         if "content-length" in response.headers:
