@@ -47,10 +47,9 @@ app = Quart(__name__)
 limiter = Limiter(app, key_func=get_remote_address)
 
 tokens = dict()
-feeds = dict()
+head_cache = dict()
 token_timeout = 3600 * 24 * 5  # seconds = 5 days
-feed_cache_time = 60 * 15  # seconds = 15 minutes
-
+head_cache_time = 60 * 60 * 24  # seconds = 1 day
 
 def example():
     return f"""Example
@@ -124,7 +123,7 @@ async def not_found(error):
     )
 
 
-id_pattern = re.compile("[0-9a-fA-F\-]+")
+id_pattern = re.compile(r"[0-9a-fA-F\-]+")
 
 
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
@@ -300,6 +299,11 @@ async def getPodcasts(token, podcast_id):
 
 
 async def urlHeadInfo(session, url):
+    if url in head_cache:
+        cl, ct, timestamp = head_cache[url]
+        if timestamp >= time():
+            return (cl, ct)
+
     async with session.head(
         url, allow_redirects=True, headers=generateHeaders(None)
     ) as response:
@@ -311,6 +315,7 @@ async def urlHeadInfo(session, url):
             content_type = response.headers["content-type"]
         else:
             content_type = "audio/mpeg"
+        head_cache[url] = (content_length, content_type, time() + head_cache_time)
         return (content_length, content_type)
 
 
@@ -327,35 +332,25 @@ async def addFeedEntry(fg, episode, session):
 
 
 async def podcastsToRss(username, password, podcast_id, data):
-    key = (token_key(username, password), podcast_id)
-    if key in feeds:
-        feed, timestamp = feeds[key]
-        if timestamp < time():
-            del feeds[key]
-        else:
-            return feed
-    else:
-        fg = FeedGenerator()
-        fg.load_extension("podcast")
+    fg = FeedGenerator()
+    fg.load_extension("podcast")
 
-        podcast = data["podcast"]
-        fg.title(podcast["title"])
-        fg.description(podcast["description"])
-        fg.link(href=f"https://podimo.com/shows/{podcast_id}", rel="alternate")
-        fg.image(podcast["images"]["coverImageUrl"])
-        fg.language(podcast["language"])
-        fg.author({"name": podcast["authorName"]})
-        episodes = data["episodes"]
+    podcast = data["podcast"]
+    fg.title(podcast["title"])
+    fg.description(podcast["description"])
+    fg.link(href=f"https://podimo.com/shows/{podcast_id}", rel="alternate")
+    fg.image(podcast["images"]["coverImageUrl"])
+    fg.language(podcast["language"])
+    fg.author({"name": podcast["authorName"]})
+    episodes = data["episodes"]
 
-        async with ClientSession() as session:
-            await asyncio.gather(
-                *[addFeedEntry(fg, episode, session) for episode in episodes]
-            )
+    async with ClientSession() as session:
+        await asyncio.gather(
+            *[addFeedEntry(fg, episode, session) for episode in episodes]
+        )
 
-        feed = fg.rss_str(pretty=True)
-        expiry = time() + feed_cache_time
-        feeds[key] = (feed, expiry)
-        return feed
+    feed = fg.rss_str(pretty=True)
+    return feed
 
 
 async def main():
