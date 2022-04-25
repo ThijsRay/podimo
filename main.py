@@ -17,7 +17,6 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-import quart.flask_patch
 import asyncio
 import re
 from gql import Client, gql
@@ -29,8 +28,6 @@ from json import loads
 from mimetypes import guess_type
 from aiohttp import ClientSession
 from quart import Quart, Response
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from functools import wraps
 from time import time
 from hashlib import sha256
@@ -43,8 +40,6 @@ HOST = "podimo.thijs.sh"
 
 # Setup Quart
 app = Quart(__name__)
-# Setup a rate limiter
-limiter = Limiter(app, key_func=get_remote_address)
 
 tokens = dict()
 head_cache = dict()
@@ -105,16 +100,17 @@ async def check_auth(username, password):
                 return True
 
         if is_correct_email_address(username):
+            # Introduce a sleep when the auth token is not yet in memory. This discourages
+            # using this server to do brute force attacks.
+            await asyncio.sleep(5)
             preauth_token = await getPreregisterToken()
             prereg_id = await getOnboardingId(preauth_token)
             token = await podimoLogin(username, password, preauth_token, prereg_id)
-
             tokens[key] = (token, time() + token_timeout)
             return True
     except Exception as e:
         print(f"An error occurred: {e}")
     return False
-
 
 @app.errorhandler(404)
 async def not_found(error):
@@ -124,10 +120,7 @@ async def not_found(error):
 
 
 id_pattern = re.compile(r"[0-9a-fA-F\-]+")
-
-
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
-@limiter.limit("3/minute")
 async def serve_feed(username, password, podcast_id):
     # Authenticate
     if not await check_auth(username, password):

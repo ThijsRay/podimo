@@ -1,5 +1,4 @@
 gql[aiohttp]
 feedgen
 quart
-Flask-Limiter
 hypercorn
