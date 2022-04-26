@@ -19,6 +19,7 @@
 
 import asyncio
 import re
+import urllib
 from gql import Client, gql
 from email.utils import parseaddr
 from feedgen.feed import FeedGenerator
@@ -27,7 +28,7 @@ from random import choice, randint
 from json import loads
 from mimetypes import guess_type
 from aiohttp import ClientSession
-from quart import Quart, Response
+from quart import Quart, Response, request, redirect
 from functools import wraps
 from time import time
 from hashlib import sha256
@@ -45,6 +46,7 @@ tokens = dict()
 head_cache = dict()
 token_timeout = 3600 * 24 * 5  # seconds = 5 days
 head_cache_time = 60 * 60 * 24  # seconds = 1 day
+
 
 def example():
     return f"""Example
@@ -112,6 +114,45 @@ async def check_auth(username, password):
         print(f"An error occurred: {e}")
     return False
 
+
+@app.route("/", methods=["POST", "GET"])
+async def index():
+    error = ""
+    if request.method == "POST":
+        form = await request.form
+        email = form.get("email")
+        password = form.get("password")
+        podcast_id = form.get("podcast_id")
+        if email is None or email == "":
+            error += "Email is required<br />"
+        if password is None or password == "":
+            error += "Password is required<br />"
+        if podcast_id is None or podcast_id == "":
+            error += "Podcast ID is required<br />"
+
+        if error == "":
+            email = urllib.parse.quote(email, safe="")
+            password = urllib.parse.quote(password, safe="")
+            podcast_id = urllib.parse.quote(podcast_id, safe="")
+            return redirect(f"/feed/{email}/{password}/{podcast_id}.xml")
+
+    form = f"""{error}<br />
+<form action="/" method="post">
+    <label for="email">Your Podimo email address</label><br />
+    <input type="email" required placeholder="Podimo email address" name="email"><br />
+    <br />
+    <label for="password">Your Podimo password</label><br />
+    <input type="password" required placeholder="Podimo password" name="password"><br />
+    <br />
+    <label for="podcast_id">Podcast ID (https://podimo.com/nl/shows/<b>THIS IS THE ID</b>)</label><br />
+    <input placeholder="Podcast ID" required name="podcast_id"><br />
+    <br />
+    <input type="submit" value="Create RSS URL (may take some time)" />
+</form>
+    """
+    return Response(form)
+
+
 @app.errorhandler(404)
 async def not_found(error):
     return Response(
@@ -120,6 +161,8 @@ async def not_found(error):
 
 
 id_pattern = re.compile(r"[0-9a-fA-F\-]+")
+
+
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 async def serve_feed(username, password, podcast_id):
     # Authenticate
