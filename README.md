@@ -3,6 +3,11 @@
 Podimo is a proprietary podcasting player that enables you to listen to various exclusive shows behind a paywall.
 This tool allows you to stream Podimo podcasts with your preferred podcast player, without having to use the Podimo app.
 
+## Docker environment variables
+
+* **BIND_HOST**: Sets the host and port to bind on (default: 127.0.0.1:12104)
+* **HOST**: Host that will be displayed in the example. (default: podimo.thijs.sh)
+
 ## Usage
 To obtain a Podimo RSS feed, you need to provide
 * Your Podimo username
