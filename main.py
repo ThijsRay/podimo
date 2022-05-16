@@ -20,6 +20,7 @@
 import asyncio
 import re
 import urllib
+import os
 from gql import Client, gql
 from email.utils import parseaddr
 from feedgen.feed import FeedGenerator
@@ -37,7 +38,9 @@ from hypercorn.asyncio import serve
 
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
 
-HOST = "podimo.thijs.sh"
+HOST = os.environ.get("HOST", "podimo.thijs.sh")
+
+BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1:12104")
 
 # Setup Quart
 app = Quart(__name__)
@@ -391,7 +394,7 @@ async def podcastsToRss(username, password, podcast_id, data):
 
 async def main():
     config = Config()
-    config.bind = ["127.0.0.1:12104"]
+    config.bind = [BIND_HOST]
     await serve(app, config)
 
 
