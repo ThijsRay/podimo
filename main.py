@@ -366,6 +366,11 @@ async def addFeedEntry(fg, episode, session):
     fe.pubDate(episode["datetime"])
 
     url = episode["streamMedia"]["url"]
+
+    if "hls-media" in url and "/main.m3u8" in url:
+        url = url.replace("hls-media", "audios")
+        url = url.replace("/main.m3u8", ".mp3")
+
     content_length, content_type = await urlHeadInfo(session, url)
     fe.enclosure(url, content_length, content_type)
 
