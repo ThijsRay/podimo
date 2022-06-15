@@ -137,7 +137,15 @@ async def index():
             email = urllib.parse.quote(email, safe="")
             password = urllib.parse.quote(password, safe="")
             podcast_id = urllib.parse.quote(podcast_id, safe="")
-            return redirect(f"/feed/{email}/{password}/{podcast_id}.xml")
+
+            response = f"""
+            The feed can be found at<br />
+            <p>
+            https://{HOST}/feed/{email}/{password}/{podcast_id}.xml
+            </p>
+            Copy this link into your podcast player (only works if it supports custom RSS feeds).
+            """
+            return Response(response)
 
     form = f"""{error}<br />
 <form action="/" method="post">
