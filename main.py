@@ -65,6 +65,11 @@ Note that the username and password should be URL encoded. This can be done with
 a tool like https://devpal.co/url-encode/
 """
 
+@app.after_request
+def allow_cors(response):
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST')
+    return response
 
 def authenticate():
     return Response(
@@ -75,7 +80,6 @@ You need to login with the correct credentials for Podimo.
         401,
         {"Content-Type": "text/plain"},
     )
-
 
 # Verify if it is actually an email address
 def is_correct_email_address(username):
