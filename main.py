@@ -18,7 +18,6 @@
 # permissions and limitations under the Licence.
 
 import asyncio
-import base64
 import re
 import urllib
 import os
@@ -60,7 +59,7 @@ Password: this-is-my-password
 Podcast ID: 12345-abcdef
 
 The URL will be
-https://{HOST}/feed/example%40example.com/this-is-my-password/12345-abcdef.xml
+https://example%40example.com:this-is-my-password@{HOST}/feed/12345-abcdef.xml
 
 Note that the username and password should be URL encoded. This can be done with
 a tool like https://devpal.co/url-encode/
@@ -79,7 +78,10 @@ You need to login with the correct credentials for Podimo.
 
 {example()}""",
         401,
-        {"Content-Type": "text/plain"},
+        {
+            "Content-Type": "text/plain",
+            "WWW-Authenticate": "Basic realm='Podimo credentials'"
+        },
     )
 
 # Verify if it is actually an email address
@@ -146,9 +148,9 @@ async def index():
             response = f"""
             The feed can be found at<br />
             <p>
-            https://{HOST}/feed/{email}/{password}/{podcast_id}.xml
+            https://{email}:{password}@{HOST}/feed/{podcast_id}.xml
             </p>
-            Copy this link into your podcast player (only works if it supports custom RSS feeds).
+            Copy this link into your podcast player (only works if it supports custom private RSS feeds).
             """
             return Response(response)
 
@@ -178,6 +180,13 @@ async def not_found(error):
 
 id_pattern = re.compile(r"[0-9a-fA-F\-]+")
 
+@app.route("/feed/<string:podcast_id>.xml")
+async def serve_basic_auth_feed(podcast_id):
+    auth = request.authorization
+    if not auth:
+        return authenticate()
+    else:
+        return await serve_feed(auth.username, auth.password, podcast_id)
 
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 async def serve_feed(username, password, podcast_id):
@@ -205,27 +214,6 @@ async def serve_feed(username, password, podcast_id):
         return Response("Something went wrong while fetching the podcasts", 500, {})
     return Response(podcasts, mimetype="text/xml")
 
-
-@app.route("/feed/auth/basic/<string:podcast_id>.xml")
-async def serve_feed_with_basic_auth(podcast_id):
-    # Retrieve the username and password from the request
-    authorization = request.headers.get("Authorization")
-    if authorization is None:
-        return Response("No authorization header", 401, {"WWW-Authenticate": "Basic"})
-    
-    # Check if the authorization header is valid
-    if not authorization.startswith("Basic "):
-        return Response("Invalid authorization header", 401, {"WWW-Authenticate": "Basic"})
-    
-    # Extract the username and password from the authorization header
-    try:
-        authorization = authorization[len("Basic "):]
-        username, password = base64.b64decode(authorization).decode("utf-8").split(":")
-
-        return await serve_feed(username, password, podcast_id)
-    except Exception as e:
-        print(f"Error while decoding authorization header: {e}")
-        return Response("Invalid authorization header", 401, {"WWW-Authenticate": "Basic"})
 
 def randomHexId(length):
     string = []
