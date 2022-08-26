@@ -155,7 +155,7 @@ async def index():
             return Response(response)
 
     form = f"""{error}<br />
-<form action="/" method="post">
+<form action="./" method="post">
     <label for="email">Your Podimo email address</label><br />
     <input type="email" required placeholder="Podimo email address" name="email"><br />
     <br />
