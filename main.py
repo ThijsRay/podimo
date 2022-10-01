@@ -47,6 +47,7 @@ app = Quart(__name__)
 
 tokens = dict()
 head_cache = dict()
+url_cache = dict()
 token_timeout = 3600 * 24 * 5  # seconds = 5 days
 head_cache_time = 60 * 60 * 24  # seconds = 1 day
 
@@ -338,6 +339,7 @@ async def getPodcasts(token, podcast_id):
         }
 
         fragment EpisodeBase on PodcastEpisode {
+          id
           description
           datetime
           title
@@ -359,9 +361,9 @@ async def getPodcasts(token, podcast_id):
         return result
 
 
-async def urlHeadInfo(session, url):
-    if url in head_cache:
-        cl, ct, timestamp = head_cache[url]
+async def urlHeadInfo(session, id, url):
+    if id in head_cache:
+        cl, ct, timestamp = head_cache[id]
         if timestamp >= time():
             return (cl, ct)
 
@@ -376,24 +378,36 @@ async def urlHeadInfo(session, url):
             content_type = response.headers["content-type"]
         else:
             content_type = "audio/mpeg"
-        head_cache[url] = (content_length, content_type, time() + head_cache_time)
+        head_cache[id] = (content_length, content_type, time() + head_cache_time)
         return (content_length, content_type)
 
 
 async def addFeedEntry(fg, episode, session):
     fe = fg.add_entry()
     fe.title(episode["title"])
-    fe.podcast.itunes_duration(episode["streamMedia"]["duration"])
     fe.description(episode["description"])
     fe.pubDate(episode["datetime"])
 
     url = episode["streamMedia"]["url"]
+    duration = episode["streamMedia"]["duration"]
+    # I have no idea WHY Podimo has decided that their API has to be
+    # non-deterministic. It only returns a value for the URL when it feels like it,
+    # otherwise it returns an empty string. The rest of the fields are still present
+    # in the response, just the URL and duration are missing SOMETIMES
+    if url == "":
+        if episode['id'] in url_cache:
+            url, duration = url_cache[episode['id']]
+        else:
+            return
 
     if "hls-media" in url and "/main.m3u8" in url:
         url = url.replace("hls-media", "audios")
         url = url.replace("/main.m3u8", ".mp3")
 
-    content_length, content_type = await urlHeadInfo(session, url)
+    url_cache[episode['id']] = (url, duration)
+
+    fe.podcast.itunes_duration(duration)
+    content_length, content_type = await urlHeadInfo(session, episode['id'], url)
     fe.enclosure(url, content_length, content_type)
 
 
