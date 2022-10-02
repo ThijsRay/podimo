@@ -21,6 +21,7 @@ import asyncio
 import re
 import urllib
 import os
+import sys
 from gql import Client, gql
 from email.utils import parseaddr
 from feedgen.feed import FeedGenerator
@@ -48,6 +49,8 @@ app = Quart(__name__)
 tokens = dict()
 head_cache = dict()
 url_cache = dict()
+podcast_cache = dict()
+podcast_cache_time = 15*60 # 15 minutes
 token_timeout = 3600 * 24 * 5  # seconds = 5 days
 head_cache_time = 60 * 60 * 24  # seconds = 1 day
 
@@ -70,6 +73,7 @@ a tool like https://devpal.co/url-encode/
 def allow_cors(response):
     response.headers.set('Access-Control-Allow-Origin', '*')
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST')
+    response.headers.set('Cache-Control', 'max-age=900')
     return response
 
 def authenticate():
@@ -122,7 +126,7 @@ async def check_auth(username, password):
             tokens[key] = (token, time() + token_timeout)
             return True
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}", file=sys.stderr)
     return False
 
 
@@ -211,7 +215,7 @@ async def serve_feed(username, password, podcast_id):
             return Response(
                 "Podcast not found. Are you sure you have the correct ID?", 404, {}
             )
-        print(f"Error while fetching podcasts: {exception}")
+        print(f"Error while fetching podcasts: {exception}", file=sys.stderr)
         return Response("Something went wrong while fetching the podcasts", 500, {})
     return Response(podcasts, mimetype="text/xml")
 
@@ -311,6 +315,12 @@ async def podimoLogin(username, password, preauth_token, prereg_id):
 
 
 async def getPodcasts(token, podcast_id):
+    if podcast_id in podcast_cache:
+        result, timestamp = podcast_cache[podcast_id]
+        if timestamp >= time():
+            print(f"Got podcast {podcast_id} from cache ({int(timestamp-time())} seconds left)", file=sys.stderr)
+            return result
+
     t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(token))
     async with Client(transport=t, serialize_variables=True) as client:
         query = gql(
@@ -358,6 +368,8 @@ async def getPodcasts(token, podcast_id):
         }
 
         result = await client.execute(query, variable_values=variables)
+        print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
+        podcast_cache[podcast_id] = (result, time() + podcast_cache_time)
         return result
 
 
