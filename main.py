@@ -30,12 +30,13 @@ from random import choice, randint
 from json import loads
 from mimetypes import guess_type
 from aiohttp import ClientSession
-from quart import Quart, Response, request, redirect
+from quart import Quart, Response, render_template, request, redirect
 from functools import wraps
 from time import time
 from hashlib import sha256
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
+from urllib.parse import quote
 
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
 
@@ -53,6 +54,9 @@ podcast_cache = dict()
 podcast_cache_time = 15*60 # 15 minutes
 token_timeout = 3600 * 24 * 5  # seconds = 5 days
 head_cache_time = 60 * 60 * 24  # seconds = 1 day
+
+locales = ['nl-NL', 'de-DE']
+regions = ['nl', 'de']
 
 
 def example():
@@ -138,43 +142,39 @@ async def index():
         email = form.get("email")
         password = form.get("password")
         podcast_id = form.get("podcast_id")
+        region = form.get("region")
+        locale = form.get("locale")
+
         if email is None or email == "":
-            error += "Email is required<br />"
+            error += "Email is required"
         if password is None or password == "":
-            error += "Password is required<br />"
+            error += "Password is required"
         if podcast_id is None or podcast_id == "":
-            error += "Podcast ID is required<br />"
+            error += "Podcast ID is required"
+        if region is None or region == "":
+            error += "Region is required"
+        if locale is None or locale == "":
+            error += "Locale is required"
 
         if error == "":
-            email = urllib.parse.quote(email, safe="")
-            password = urllib.parse.quote(password, safe="")
-            podcast_id = urllib.parse.quote(podcast_id, safe="")
+            email = quote(email, safe="")
+            region = quote(region, safe="")
+            locale = quote(locale, safe="")
 
-            response = f"""
-            The feed can be found at<br />
-            <p>
-            https://{email}:{password}@{HOST}/feed/{podcast_id}.xml
-            </p>
-            Copy this link into your podcast player (only works if it supports custom private RSS feeds).
-            """
-            return Response(response)
+            comma = quote(',', safe="")
+            username = f"{email}{comma}{region}{comma}{locale}"
 
-    form = f"""{error}<br />
-<form action="./" method="post">
-    <label for="email">Your Podimo email address</label><br />
-    <input type="email" required placeholder="Podimo email address" name="email"><br />
-    <br />
-    <label for="password">Your Podimo password</label><br />
-    <input type="password" required placeholder="Podimo password" name="password"><br />
-    <br />
-    <label for="podcast_id">Podcast ID (https://podimo.com/nl/shows/<b>THIS IS THE ID</b>)</label><br />
-    <input placeholder="Podcast ID" required name="podcast_id"><br />
-    <br />
-    <input type="submit" value="Create RSS URL (may take some time)" />
-</form>
-    """
-    return Response(form)
+            password = quote(password, safe="")
+            podcast_id = quote(podcast_id, safe="")
 
+            return await render_template("feed_location.html", 
+                                         username=username,
+                                         password=password,
+                                         HOST=HOST,
+                                         podcast_id=podcast_id
+            )
+
+    return await render_template("index.html", error=error, locales=locales, regions=regions)
 
 @app.errorhandler(404)
 async def not_found(error):

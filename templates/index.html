@@ -1,0 +1,35 @@
+{% if error %}
+{{ error }} <br /><br />
+{% endif %}
+
+<form action="./" method="post">
+  <label for="email">Your Podimo email address</label><br />
+  <input type="email" required placeholder="Podimo email address" name="email"><br />
+  <br />
+
+  <label for="password">Your Podimo password</label><br />
+  <input type="password" required placeholder="Podimo password" name="password"><br />
+  <br />
+
+  <label for="podcast_id">Podcast ID (https://podimo.com/nl/shows/<b>THIS IS THE ID</b>)</label><br />
+  <input placeholder="Podcast ID" required name="podcast_id"><br />
+  <br />
+
+  <label for="region">Region</label><br />
+  <select name="region">
+    {% for region in regions %}
+    <option>{{ region }}</option>
+    {% endfor %}
+  </select></br>
+  <br />
+
+  <label for="locale">Locale</label><br />
+  <select name="locale">
+    {% for locale in locales %}
+    <option>{{ locale }}</option>
+    {% endfor %}
+  </select></br>
+  <br />
+
+  <input type="submit" value="Create RSS URL (may take some time)" />
+</form>
