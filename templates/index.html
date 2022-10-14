@@ -1,3 +1,10 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>Podimo-to-RSS converter</h1>
+This program converts shows on Podimo to an RSS feed that can be used with
+any normal podcast player.
+
 {% if error %}
 {{ error }} <br /><br />
 {% endif %}
@@ -5,22 +12,19 @@
 <form action="./" method="post">
   <label for="email">Your Podimo email address</label><br />
   <input type="email" required placeholder="Podimo email address" name="email"><br />
-  <br />
 
   <label for="password">Your Podimo password</label><br />
   <input type="password" required placeholder="Podimo password" name="password"><br />
-  <br />
 
   <label for="podcast_id">Podcast ID (https://podimo.com/nl/shows/<b>THIS IS THE ID</b>)</label><br />
   <input placeholder="Podcast ID" required name="podcast_id"><br />
-  <br />
 
   <label for="region">Region</label><br />
   <select name="region">
     {% for region in regions %}
     <option>{{ region }}</option>
     {% endfor %}
-  </select></br>
+  </select>
   <br />
 
   <label for="locale">Locale</label><br />
@@ -28,8 +32,13 @@
     {% for locale in locales %}
     <option>{{ locale }}</option>
     {% endfor %}
-  </select></br>
-  <br />
+  </select>
 
-  <input type="submit" value="Create RSS URL (may take some time)" />
+  <input type="submit" value="Create RSS URL" />
 </form>
+
+<footer>
+  Licensed under the EUPL-1.2 license<br />
+  Source code can be found on <a href="https://github.com/ThijsRay/podimo">GitHub</a><br />
+</footer>
+{% endblock %}

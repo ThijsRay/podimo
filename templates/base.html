@@ -1,0 +1,48 @@
+<html>
+
+<head>
+  <title>Podimo-to-RSS converter</title>
+  <style>
+    html {
+      max-width: 70ch;
+      /* larger spacing on larger screens, very small spacing on tiny screens */
+      padding: calc(1vmin + .5rem);
+      /* shorthand for margin-left/margin-right */
+      margin-inline: auto;
+      /* use system font stack: https://developer.mozilla.org/en-US/docs/Web/CSS/font-family */
+      font-family: system-ui
+    }
+
+    /* increase line-height for everything except headings */
+    body :not(:is(h1, h2, h3, h4, h5, h6)) {
+      line-height: 1.75;
+    }
+
+    form {
+      padding-top: 1em;
+    }
+
+    *:not(:is(h1, h2, h3, h4, h5, h6)) {
+      /* fluid sizing: https://frontaid.io/blog/fluid-typography-2d-css-locks-clamp/ */
+      font-size: clamp(1rem, 0.909rem + 0.45vmin, 1.25rem);
+    }
+
+    select,
+    input {
+      width: 100%;
+      padding: 0.7rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type=submit] {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+
+<body>
+  {% block body %}
+  {% endblock %}
+</body>
+
+</html>

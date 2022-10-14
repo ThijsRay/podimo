@@ -1,5 +1,28 @@
+{% extends "base.html" %}
+
+{% block body %}
 Assuming your credentials were correct, your Podimo-to-RSS feed can be found at<br />
 <p>
   https://{{ username }}:{{ password }}@{{ HOST }}/feed/{{ podcast_id }}.xml
 </p>
+
 Copy this link into your podcast player (only works if it supports custom private RSS feeds).
+<br />
+<br />
+
+<div id="button"></div>
+<script>
+  let url = "https://{{ username }}:{{ password }}@{{ HOST }}/feed/{{ podcast_id }}.xml"
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      document.getElementById('copy').innerHTML = "Copied!";
+      setTimeout(setButtonDiv, 2000);
+    });
+  }
+  function setButtonDiv() {
+    document.getElementById("button").innerHTML = "<button id='copy' onclick='copy()'>Copy to your clipboard</button>";
+  }
+  setButtonDiv();
+</script>
+
+{% endblock %}
