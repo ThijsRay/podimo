@@ -105,8 +105,10 @@ def token_key(username, password):
     return key
 
 
-async def check_auth(username, password):
+async def check_auth(username, password, region, locale):
     try:
+        if len(username) == 0 or len(password) == 0:
+            return False
         if len(username) > 256 or len(password) > 256:
             return False
 
@@ -121,18 +123,17 @@ async def check_auth(username, password):
                 return True
 
         if is_correct_email_address(username):
-            # Introduce a sleep when the auth token is not yet in memory. This discourages
-            # using this server to do brute force attacks.
-            await asyncio.sleep(5)
-            preauth_token = await getPreregisterToken()
+            preauth_token = await getPreregisterToken(region, locale)
             prereg_id = await getOnboardingId(preauth_token)
-            token = await podimoLogin(username, password, preauth_token, prereg_id)
+            token = await podimoLogin(username, password, preauth_token, prereg_id, locale)
             tokens[key] = (token, time() + token_timeout)
             return True
+
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
     return False
 
+podcast_id_pattern = re.compile(r"[0-9a-fA-F\-]+")
 
 @app.route("/", methods=["POST", "GET"])
 async def index():
@@ -151,10 +152,16 @@ async def index():
             error += "Password is required"
         if podcast_id is None or podcast_id == "":
             error += "Podcast ID is required"
+        elif podcast_id_pattern.fullmatch(podcast_id) is None:
+            error += "Podcast ID is not valid"
         if region is None or region == "":
             error += "Region is required"
+        elif region not in regions:
+            error += "Region is not valid"
         if locale is None or locale == "":
             error += "Locale is required"
+        elif locale not in locales:
+            error += "Locale is not valid"
 
         if error == "":
             email = quote(email, safe="")
@@ -183,7 +190,6 @@ async def not_found(error):
     )
 
 
-id_pattern = re.compile(r"[0-9a-fA-F\-]+")
 
 @app.route("/feed/<string:podcast_id>.xml")
 async def serve_basic_auth_feed(podcast_id):
@@ -193,15 +199,28 @@ async def serve_basic_auth_feed(podcast_id):
     else:
         return await serve_feed(auth.username, auth.password, podcast_id)
 
+def split_username_region_locale(string):
+    s = string.split(',')
+    if len(s) == 3:
+        return tuple(s)
+    else:
+        return (s[0], regions[0], locales[0])
+
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 async def serve_feed(username, password, podcast_id):
+    # Check if it is a valid podcast id string
+    if podcast_id_pattern.fullmatch(podcast_id) is None:
+        return Response("Invalid podcast id format", 400, {})
+
+    username, region, locale = split_username_region_locale(username)
+    if region not in regions:
+        return Response("Invalid region", 400, {})
+    if locale not in locales:
+        return Response("Invalid locale", 400, {})
+
     # Authenticate
     if not await check_auth(username, password):
         return authenticate()
-
-    # Check if it is a valid podcast id string
-    if id_pattern.fullmatch(podcast_id) is None:
-        return Response("Invalid podcast id format", 404, {})
 
     # Get a list of valid podcasts
     token, _ = tokens[token_key(username, password)]
@@ -247,17 +266,19 @@ def generateHeaders(authorization):
     return headers
 
 
-async def getPreregisterToken():
+# This gets the authentication token that is required for subsequent requests
+# as an anonymous user
+async def getPreregisterToken(region, locale):
     t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(None))
     async with Client(transport=t) as client:
         query = gql(
             """
-                query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $region: String, $appsFlyerId: String) {
+                query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $countryCode: String, $appsFlyerId: String) {
                     tokenWithPreregisterUser(
                         locale: $locale
                         referenceUser: $referenceUser
-                        region: $region
-                        source: WEB
+                        countryCode: $countryCode
+                        source: MOBILE
                         appsFlyerId: $appsFlyerId
                     ) {
                         token
@@ -265,11 +286,12 @@ async def getPreregisterToken():
                 }
                 """
         )
-        variables = {"locale": "nl-NL", "region": "nl", "appsFlyerId": randomFlyerId()}
+        variables = {"locale": locale, "countryCode": region, "appsFlyerId": randomFlyerId()}
         result = await client.execute(query, variable_values=variables)
         return result["tokenWithPreregisterUser"]["token"]
 
 
+# Gets an "onboarding ID" that is used during login
 async def getOnboardingId(preauth_token):
     t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(preauth_token))
     async with Client(transport=t) as client:
@@ -286,7 +308,7 @@ async def getOnboardingId(preauth_token):
         return result["userOnboardingFlow"]["id"]
 
 
-async def podimoLogin(username, password, preauth_token, prereg_id):
+async def podimoLogin(username, password, preauth_token, prereg_id, locale):
     t = AIOHTTPTransport(url=GRAPHQL_URL, headers=generateHeaders(preauth_token))
     async with Client(transport=t, serialize_variables=True) as client:
         query = gql(
@@ -306,7 +328,7 @@ async def podimoLogin(username, password, preauth_token, prereg_id):
         variables = {
             "email": username,
             "password": password,
-            "locale": "nl-NL",
+            "locale": locale,
             "preregisterId": prereg_id,
         }
 
