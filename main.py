@@ -501,6 +501,7 @@ async def podcastsToRss(podcast_id, data, locale):
 async def main():
     config = Config()
     config.bind = [BIND_HOST]
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     await serve(app, config)
 
 
