@@ -3,26 +3,30 @@
 Podimo is a proprietary podcasting player that enables you to listen to various exclusive shows behind a paywall.
 This tool allows you to stream Podimo podcasts with your preferred podcast player, without having to use the Podimo app.
 
-## Docker environment variables
+## Environment variables
 
 * **BIND_HOST**: Sets the host and port to bind on (default: 127.0.0.1:12104)
 * **HOST**: Host that will be displayed in the example. (default: podimo.thijs.sh)
 
 ## Usage
+You can see an example on [podimo.thijs.sh](https://podimo.thijs.sh).
+
+### Usage if your player doesn't support HTTP Authentication
 To obtain a Podimo RSS feed, you need to provide
 * Your Podimo username
 * Your Podimo password
 * The ID of the podcast you want to listen to
 
 These values are passed via an URL.
-### Example
-------------
+#### Example
 * **Username** `example@example.com`
 * **Password** `this-is-my-password`
 * **Podcast ID** `12345-abcdef`
 
 The URL will be
 `https://podimo.thijs.sh/feed/example%40example.com/this-is-my-password/12345-abcdef.xml`. You can pass this URL directly to your favorite podcast player that supports RSS feeds.
+
+Please be aware that this older method might leak your credentials when you use them in your podcast player, as your player is not aware that there are credentials in the URL. The recommended way is the tool is to use the form on [podimo.thijs.sh](https://podimo.thijs.sh) or your own self-hosted instance. This uses HTTP Authentication, which treats your credentials as sensitive information. Podcast players will not share these credentials.
 
 ## Installation for self-hosting
 If you want run this script yourself, you need a recent Python 3 version and install the packages in `requirements.txt` with `pip install -r requirements.txt`.
@@ -33,43 +37,47 @@ The script keeps track of a few things in memory:
 - A cryptographic hash that is calculated based on your username and password.
 - A Podimo access token, which is kept in memory for accessing pages after logging in.
 
-This data is _never_ written to the disk and it is _never_ logged. The hosted script runs behind an `nginx` reverse proxy that requires HTTPS and does not keep any `access_logs`. The `nginx` configuration is:
-
+This data is _never_ written to the disk and it is _never_ logged. The hosted script runs behind an `nginx` reverse proxy that requires HTTPS and does not keep any logs. The `nginx` configuration is:
 ```nginx
+limit_req_zone $binary_remote_addr zone=podimo_limit:10m rate=1r/s;
 server {
 	server_name podimo.thijs.sh;
 	access_log off;
+	error_log   /dev/null   crit;
 
 	location / {
-        proxy_pass http://127.0.0.1:12104;
+    proxy_pass http://127.0.0.1:12104;
 
-	    add_header Strict-Transport-Security "max-age=31536000;" always;
+	  limit_req zone=podimo_limit burst=5;
+	  limit_req_status 429;
 
-	    add_header X-Accel-Buffering no;
-	    proxy_buffering off;
+	  add_header Strict-Transport-Security "max-age=31536000;" always;
+	  add_header Cache-Control "public, max-age=300";
+	  add_header X-Accel-Buffering no;
 
-        proxy_set_header X-Real-IP $remote_addr;
+	  proxy_buffering off;
+    proxy_set_header X-Real-IP $remote_addr;
 	}
 
-    listen [::]:443 ssl http2 ipv6only=on; # managed by Certbot
-    listen 443 ssl http2; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/podimo.thijs.sh/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/podimo.thijs.sh/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+  listen [::]:443 ssl ipv6only=on; # managed by Certbot
+  listen 443 ssl; # managed by Certbot
+  ssl_certificate /etc/letsencrypt/live/podimo.thijs.sh/fullchain.pem; # managed by Certbot
+  ssl_certificate_key /etc/letsencrypt/live/podimo.thijs.sh/privkey.pem; # managed by Certbot
+  include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
 
 
 server {
-    if ($host = podimo.thijs.sh) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
+  if ($host = podimo.thijs.sh) {
+    return 301 https://$host$request_uri;
+  } # managed by Certbot
 
 	access_log off;
 	listen 80;
 	listen [::]:80;
 	server_name podimo.thijs.sh;
-    return 404; # managed by Certbot
+  return 404; # managed by Certbot
 }
 ```
 
