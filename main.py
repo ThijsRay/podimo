@@ -251,9 +251,12 @@ def randomFlyerId():
 
 
 def generateHeaders(authorization, locale):
-    headers = {
+    headers = { 
+        'user-agent': 'Podimo/2.46.0 build 553/iOS 16.5.1',
+        'user-os': 'ios',
+        'user-version': '2.46.0',
         'user-os': 'android',
-        'user-agent': 'Podimo/2.26.9 build 461/Android 32',
+        'user-agent': 'Podimo/2.46.2 build 461/Android 32',
         'user-version': '2.26.9',
         'user-locale': locale,
         "user-unique-id": randomHexId(16)
