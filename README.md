@@ -5,7 +5,7 @@ This tool allows you to stream Podimo podcasts with your preferred podcast playe
 
 ## Environment variables
 
-* **BIND_HOST**: Sets the host and port to bind on (default: 127.0.0.1:12104)
+* **BIND_HOST**: Sets the host and port to bind on (default: 0.0.0.0:12104)
 * **HOST**: Host that will be displayed in the example. (default: podimo.thijs.sh)
 
 ## Usage
@@ -30,6 +30,44 @@ Please be aware that this older method might leak your credentials when you use 
 
 ## Installation for self-hosting
 If you want run this script yourself, you need a recent Python 3 version and install the packages in `requirements.txt` with `pip install -r requirements.txt`.
+
+## Installation for Docker Compose (self-built image)
+If you want to run this script yourself in a Docker container (using Docker Compose), follow the following steps: 
+
+### Step 1  - download copy of this respository
+Go to the directory where you want your local copy, e.g. `cd /home/user/`.
+
+Then, pull this repository.
+`git clone https://github.com/ThijsRay/podimo.git`
+This will download the entire script and all files to a new directory, e.g. /home/user/podimo.
+
+### Step 2  - create a Docker Compose file:
+Go to the directory where you want your docker-compose.yml file to live, e.g. `cd /opt/docker`.
+
+Create a docker-compose.yml file with the following content:
+```
+version: "3"
+services:
+	podimo:
+		build: 
+		context: /home/user/podimo  # Directory from step 1
+		dockerfile: Dockerfile
+		container_name: podimo
+		environment:
+			- HOST=[your_domain]  # Default: podimo.thijs.sh
+			- BIND_HOST=0.0.0.0:12104
+		ports:
+			- 12104:12104
+		restart: unless-stopped
+```
+
+### Step 3  - Build the image and start the Docker container with the script:
+First build the image: `docker compose build`, then start it up: `docker compose up -d` 
+
+To check if the container is running: `docker compose logs -f podimo` 
+
+If the container is running correctly, it will report something like this: `[2023-08-08 22:09:05 +0200] [7] [INFO] Running on http://0.0.0.0:12104 (CTRL + C to quit)`
+
 
 ## Privacy
 The script keeps track of a few things in memory:

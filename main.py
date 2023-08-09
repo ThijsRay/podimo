@@ -39,7 +39,7 @@ GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
 
 HOST = os.environ.get("HOST", "podimo.thijs.sh")
 
-BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1:12104")
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0:12104")
 
 # Setup Quart
 app = Quart(__name__)
