@@ -32,7 +32,7 @@ Please be aware that this older method might leak your credentials when you use 
 If you want run this script yourself, you need a recent Python 3 version and install the packages in `requirements.txt` with `pip install -r requirements.txt`.
 
 ## Installation for Docker Compose (self-built image)
-If you want to run this script yourself in a Docker container (using Docker Compose), follow the following steps: 
+If you want to run this script yourself in a Docker container (using Docker Compose), follow the following steps. This assumes Git and Docker (with Compose plugin) are already installed on your system.
 
 ### Step 1  - download copy of this respository
 Go to the directory where you want your local copy, e.g. `cd /home/user/`.
@@ -66,7 +66,8 @@ First build the image: `docker compose build`, then start it up: `docker compose
 
 To check if the container is running: `docker compose logs -f podimo` 
 
-If the container is running correctly, it will report something like this: `[2023-08-08 22:09:05 +0200] [7] [INFO] Running on http://0.0.0.0:12104 (CTRL + C to quit)`
+If the container is running correctly, it will report something like this: 
+`[2023-08-08 22:09:05 +0200] [7] [INFO] Running on http://0.0.0.0:12104 (CTRL + C to quit)`
 
 
 ## Privacy
