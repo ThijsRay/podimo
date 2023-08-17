@@ -20,7 +20,7 @@
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from podimo.config import GRAPHQL_URL
-from podimo.utils import is_correct_email_address, token_key, randomFlyerId, generateHeaders as gHdrs
+from podimo.utils import is_correct_email_address, token_key, randomFlyerId, generateHeaders as gHdrs, debug
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 from os import getenv
@@ -64,6 +64,7 @@ class PodimoClient:
     # as an anonymous user
     async def getPreregisterToken(self):
         t = self.getTransport(self.generateHeaders(None))
+        debug("AuthorizationPreregisterUser")
         async with Client(transport=t) as client:
             query = gql(
                 """
@@ -90,6 +91,7 @@ class PodimoClient:
     # Gets an "onboarding ID" that is used during login
     async def getOnboardingId(self):
         t = self.getTransport(self.generateHeaders(self.preauth_token))
+        debug("OnboardingQuery")
         async with Client(transport=t) as client:
             query = gql(
                 """
@@ -110,6 +112,7 @@ class PodimoClient:
         await self.getOnboardingId()
 
         t = self.getTransport(self.generateHeaders(self.preauth_token))
+        debug("AuthorizationAuthorize")
         async with Client(transport=t, serialize_variables=True) as client:
             query = gql(
                 """
@@ -147,6 +150,7 @@ class PodimoClient:
             return podcast
 
         t = self.getTransport(self.generateHeaders(self.token))
+        debug("ChannelEpisodesQuery")
         async with Client(transport=t, serialize_variables=True) as client:
             query = gql(
                 """

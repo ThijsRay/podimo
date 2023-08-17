@@ -20,6 +20,8 @@
 from email.utils import parseaddr
 from random import choice, randint
 from hashlib import sha256
+from podimo.config import DEBUG
+from sys import stderr
 
 def randomHexId(length: int):
     string = []
@@ -58,3 +60,6 @@ def generateHeaders(authorization, locale):
         headers["authorization"] = authorization
     return headers
 
+def debug(line):
+    if DEBUG:
+        print(line, file=stderr)

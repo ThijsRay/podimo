@@ -30,6 +30,9 @@ PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
 PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
 
+# Enable extra logging in debugging mode
+DEBUG = os.environ.get("DEBUG", False)
+
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
 GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"

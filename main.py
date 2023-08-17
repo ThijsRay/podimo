@@ -218,6 +218,7 @@ async def urlHeadInfo(session, id, url, locale):
     if entry:
         return entry
 
+    print("HEAD request to", url, file=sys.stderr)
     async with session.head(
         url, allow_redirects=True, headers=generateHeaders(None, locale)
     ) as response:
