@@ -19,7 +19,7 @@
 
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
-from podimo.config import GRAPHQL_URL
+from podimo.config import GRAPHQL_URL, LOCAL_PROXY_URL
 from podimo.utils import is_correct_email_address, token_key, randomFlyerId, generateHeaders as gHdrs, debug
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
@@ -50,14 +50,13 @@ class PodimoClient:
     def getTransport(self, headers):
         # Pass all GraphQL requests through a proxy to bypass potential
         # blockades
-        trust_env = False
+        endpoint_url = GRAPHQL_URL
         if getenv("HTTP_PROXY"):
-            trust_env = True
-        return AIOHTTPTransport(url=GRAPHQL_URL,
+            endpoint_url = LOCAL_PROXY_URL
+        return AIOHTTPTransport(url=endpoint_url,
                                 headers=headers,
                                 client_session_args={
                                     'cookie_jar': self.cookie_jar,
-                                    'trust_env': trust_env
                                 })
 
     # This gets the authentication token that is required for subsequent requests

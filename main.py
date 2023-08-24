@@ -20,6 +20,7 @@
 import asyncio
 import re
 import sys
+from os import getenv
 from podimo.client import PodimoClient
 from feedgen.feed import FeedGenerator
 from mimetypes import guess_type
@@ -31,6 +32,7 @@ from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
 from podimo.utils import generateHeaders
+from podimo.proxy import spawn_local_proxy
 import podimo.cache as cache
 
 # Setup Quart, used for serving the web pages
@@ -316,12 +318,21 @@ async def podcastsToRss(podcast_id, data, locale):
     return feed
 
 
-async def main():
+async def spawn_web_server():
     config = Config()
     config.bind = [PODIMO_BIND_HOST]
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     await serve(app, config)
 
+async def main(proxy):
+    tasks = [spawn_web_server()]
+    if proxy:
+        tasks.append(spawn_local_proxy(proxy))
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print(f"Spawning server on {PODIMO_BIND_HOST}")
+    proxy = getenv("HTTP_PROXY")
+    if proxy:
+        print(f"Spawning local proxy on {LOCAL_PROXY_URL} to proxy to {proxy}")
+    asyncio.run(main(proxy))
