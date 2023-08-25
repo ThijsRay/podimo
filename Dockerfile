@@ -6,4 +6,4 @@ WORKDIR /src
 
 RUN pip3 install -r requirements.txt
 
-ENTRYPOINT [ "/src/entrypoint.sh" ]
+ENTRYPOINT [ "python3", "main.py" ]
