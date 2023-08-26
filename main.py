@@ -31,7 +31,7 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
-from podimo.utils import generateHeaders
+from podimo.utils import generateHeaders, randomHexId
 from podimo.proxy import spawn_local_proxy
 import podimo.cache as cache
 
@@ -146,7 +146,8 @@ async def index():
                                          password=password,
                                          HOSTNAME=PODIMO_HOSTNAME,
                                          PROTOCOL=PODIMO_PROTOCOL,
-                                         podcast_id=podcast_id
+                                         podcast_id=podcast_id,
+                                         random_id=randomHexId(10)
             )
 
     return await render_template("index.html", error=error, locales=LOCALES, regions=REGIONS)

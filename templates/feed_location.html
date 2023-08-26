@@ -3,7 +3,7 @@
 {% block body %}
 Assuming your credentials were correct, your Podimo-to-RSS feed can be found at<br />
 <p>
-  {{ PROTOCOL }}://{{ username }}:{{ password }}@{{ HOSTNAME }}/feed/{{ podcast_id }}.xml
+  {{ PROTOCOL }}://{{ username }}:{{ password }}@{{ HOSTNAME }}/feed/{{ podcast_id }}.xml?{{ random_id }}
 </p>
 
 Copy this link into your podcast player (only works if it supports custom private RSS feeds).
@@ -12,7 +12,7 @@ Copy this link into your podcast player (only works if it supports custom privat
 
 <div id="button"></div>
 <script>
-  let url = "{{ PROTOCOL }}://{{ username }}:{{ password }}@{{ HOSTNAME }}/feed/{{ podcast_id }}.xml"
+  let url = "{{ PROTOCOL }}://{{ username }}:{{ password }}@{{ HOSTNAME }}/feed/{{ podcast_id }}.xml?{{ random_id }}"
   function copy() {
     navigator.clipboard.writeText(url).then(() => {
       document.getElementById('copy').innerHTML = "Copied!";
