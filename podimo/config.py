@@ -35,7 +35,7 @@ DEBUG = os.environ.get("DEBUG", False)
 
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
-GRAPHQL_URL = "https://graphql.pdm-gateway.com/graphql"
+GRAPHQL_URL = "https://podimo.com/graphql"
 
 LOCAL_PROXY_HOST = "127.0.0.1:12105"
 LOCAL_PROXY_URL = f"http://{LOCAL_PROXY_HOST}"
