@@ -17,8 +17,7 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-from gql import Client, gql
-from gql.transport.aiohttp import AIOHTTPTransport
+import cloudscraper
 from podimo.config import GRAPHQL_URL, LOCAL_PROXY_URL
 from podimo.utils import is_correct_email_address, token_key, randomFlyerId, generateHeaders as gHdrs, debug
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
@@ -40,6 +39,8 @@ class PodimoClient:
             raise ValueError("Username or password are too long")
         if not is_correct_email_address(username):
             return ValueError("Email is not in the correct format")
+        
+        self.scraper = cloudscraper.create_scraper()
 
         self.key = token_key(username, password)
         self.token = None
@@ -47,99 +48,105 @@ class PodimoClient:
     def generateHeaders(self, authorization):
         return gHdrs(authorization, self.locale) 
 
-    def getTransport(self, headers):
-        # Pass all GraphQL requests through a proxy to bypass potential
-        # blockades
-        endpoint_url = GRAPHQL_URL
-        if getenv("HTTP_PROXY"):
-            endpoint_url = LOCAL_PROXY_URL
-        return AIOHTTPTransport(url=endpoint_url,
-                                headers=headers,
-                                client_session_args={
-                                    'cookie_jar': self.cookie_jar,
-                                })
-
     # This gets the authentication token that is required for subsequent requests
     # as an anonymous user
     async def getPreregisterToken(self):
-        t = self.getTransport(self.generateHeaders(None))
+        headers = self.generateHeaders(None)
+        
         debug("AuthorizationPreregisterUser")
-        async with Client(transport=t) as client:
-            query = gql(
-                """
-                    query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $countryCode: String, $appsFlyerId: String) {
-                        tokenWithPreregisterUser(
-                            locale: $locale
-                            referenceUser: $referenceUser
-                            countryCode: $countryCode
-                            source: MOBILE
-                            appsFlyerId: $appsFlyerId
-                            currentCountry: $countryCode
-                        ) {
-                            token
-                        }
-                    }
-                    """
-            )
-            variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
-            result = await client.execute(query, variable_values=variables)
-            self.preauth_token = result["tokenWithPreregisterUser"]["token"]
-            return self.preauth_token
+        query = """
+            query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $countryCode: String, $appsFlyerId: String) {
+                tokenWithPreregisterUser(
+                    locale: $locale
+                    referenceUser: $referenceUser
+                    countryCode: $countryCode
+                    source: MOBILE
+                    appsFlyerId: $appsFlyerId
+                    currentCountry: $countryCode
+                ) {
+                    token
+                }
+            }
+        """
+
+        variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
+        response = self.scraper.post(GRAPHQL_URL, 
+                                        headers=headers, 
+                                        cookies=self.cookie_jar, 
+                                        json={"query": query, "variables": variables}
+                                    )
+        if response.status_code != 200:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        result = response.json()["data"]
+
+        self.preauth_token = result["tokenWithPreregisterUser"]["token"]
+        return self.preauth_token
 
 
     # Gets an "onboarding ID" that is used during login
     async def getOnboardingId(self):
-        t = self.getTransport(self.generateHeaders(self.preauth_token))
+        headers = self.generateHeaders(self.preauth_token)
         debug("OnboardingQuery")
-        async with Client(transport=t) as client:
-            query = gql(
-                """
-                    query OnboardingQuery {
-                        userOnboardingFlow {
-                            id
-                        }
-                    }
-                    """
-            )
-            result = await client.execute(query)
-            self.prereg_id = result["userOnboardingFlow"]["id"]
-            return self.prereg_id
+        query = """
+            query OnboardingQuery {
+                userOnboardingFlow {
+                    id
+                }
+            }
+        """
+        variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
+        response = self.scraper.post(GRAPHQL_URL, 
+                                        headers=headers, 
+                                        cookies=self.cookie_jar, 
+                                        json={"query": query, "variables": variables}
+                                    )
+        if response.status_code != 200:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        result = response.json()["data"]
+
+        self.prereg_id = result["userOnboardingFlow"]["id"]
+        return self.prereg_id
 
 
     async def podimoLogin(self):
         await self.getPreregisterToken()
         await self.getOnboardingId()
 
-        t = self.getTransport(self.generateHeaders(self.preauth_token))
+        headers = self.generateHeaders(self.preauth_token)
         debug("AuthorizationAuthorize")
-        async with Client(transport=t, serialize_variables=True) as client:
-            query = gql(
-                """
-                    query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
-                        tokenWithCredentials(
-                        email: $email
-                        password: $password
-                        locale: $locale
-                        preregisterId: $preregisterId
-                    ) {
-                        token
-                      }
-                    }
-                    """
-            )
-            variables = {
-                "email": self.username,
-                "password": self.password,
-                "locale": self.locale,
-                "preregisterId": self.prereg_id,
+        query = """
+            query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
+                tokenWithCredentials(
+                email: $email
+                password: $password
+                locale: $locale
+                preregisterId: $preregisterId
+            ) {
+                token
+                }
             }
+        """
+        variables = {
+            "email": self.username,
+            "password": self.password,
+            "locale": self.locale,
+            "preregisterId": self.prereg_id,
+        }
+        response = self.scraper.post(GRAPHQL_URL, 
+                                        headers=headers, 
+                                        cookies=self.cookie_jar, 
+                                        json={"query": query, "variables": variables}
+                                    )
+        
+        if response.status_code != 200:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        result = response.json()["data"]
 
-            result = await client.execute(query, variable_values=variables)
-            self.token = result["tokenWithCredentials"]["token"]
-            if self.token:
-                return self.token
-            else:
-                raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        self.token = result["tokenWithCredentials"]["token"]
+        if self.token:
+            return self.token
+        else:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
 
     async def getPodcasts(self, podcast_id):
         podcast = getCacheEntry(podcast_id, podcast_cache)
@@ -148,23 +155,21 @@ class PodimoClient:
             print(f"Got podcast {podcast_id} from cache ({int(timestamp-time())} seconds left)", file=sys.stderr)
             return podcast
 
-        t = self.getTransport(self.generateHeaders(self.token))
+        headers = self.generateHeaders(self.token)
         debug("ChannelEpisodesQuery")
-        async with Client(transport=t, serialize_variables=True) as client:
-            query = gql(
-                """
+        query = """
             query ChannelEpisodesQuery($podcastId: String!, $limit: Int!, $offset: Int!, $sorting: PodcastEpisodeSorting) {
-              episodes: podcastEpisodes(
+                episodes: podcastEpisodes(
                 podcastId: $podcastId
                 converted: true
                 published: true
                 limit: $limit
                 offset: $offset
                 sorting: $sorting
-              ) {
+                ) {
                 ...EpisodeBase
-              }
-              podcast: podcastById(podcastId: $podcastId) {
+                }
+                podcast: podcastById(podcastId: $podcastId) {
                 title
                 description
                 webAddress
@@ -173,36 +178,43 @@ class PodimoClient:
                 images {
                     coverImageUrl
                 }
-              }
+                }
             }
 
             fragment EpisodeBase on PodcastEpisode {
-              id
-              artist
-              podcastName
-              imageUrl
-              description
-              datetime
-              title
-              audio {
+                id
+                artist
+                podcastName
+                imageUrl
+                description
+                datetime
+                title
+                audio {
                 url
                 duration
-              }
-              streamMedia {
+                }
+                streamMedia {
                 duration
                 url
-              }
+                }
             }
-            """
-            )
-            variables = {
-                "podcastId": podcast_id,
-                "limit": 500,
-                "offset": 0,
-                "sorting": "PUBLISHED_DESCENDING",
-            }
+        """
+        variables = {
+            "podcastId": podcast_id,
+            "limit": 500,
+            "offset": 0,
+            "sorting": "PUBLISHED_DESCENDING",
+        }
+        response = self.scraper.post(GRAPHQL_URL, 
+                                        headers=headers, 
+                                        cookies=self.cookie_jar, 
+                                        json={"query": query, "variables": variables}
+                                    )
+        if response.status_code != 200:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        result = response.json()["data"]
 
-            result = await client.execute(query, variable_values=variables)
-            print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
-            insertIntoPodcastCache(podcast_id, result)
-            return result
+
+        print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
+        insertIntoPodcastCache(podcast_id, result)
+        return result
