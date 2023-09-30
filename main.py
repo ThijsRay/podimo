@@ -32,7 +32,6 @@ from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
 from podimo.utils import generateHeaders, randomHexId
-from podimo.proxy import spawn_local_proxy
 import podimo.cache as cache
 
 # Setup Quart, used for serving the web pages
@@ -325,15 +324,10 @@ async def spawn_web_server():
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     await serve(app, config)
 
-async def main(proxy):
+async def main():
     tasks = [spawn_web_server()]
-    if proxy:
-        tasks.append(spawn_local_proxy(proxy))
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     print(f"Spawning server on {PODIMO_BIND_HOST}")
-    proxy = getenv("HTTP_PROXY")
-    if proxy:
-        print(f"Spawning local proxy on {LOCAL_PROXY_URL} to proxy to {proxy}")
-    asyncio.run(main(proxy))
+    asyncio.run(main())

@@ -37,9 +37,6 @@ DEBUG = os.environ.get("DEBUG", False)
 # the API can be found.
 GRAPHQL_URL = "https://podimo.com/graphql"
 
-LOCAL_PROXY_HOST = "127.0.0.1:12105"
-LOCAL_PROXY_URL = f"http://{LOCAL_PROXY_HOST}"
-
 # The time that a token is stored in cache
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 

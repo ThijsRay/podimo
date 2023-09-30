@@ -18,7 +18,7 @@
 # permissions and limitations under the Licence.
 
 import cloudscraper
-from podimo.config import GRAPHQL_URL, LOCAL_PROXY_URL
+from podimo.config import GRAPHQL_URL
 from podimo.utils import (is_correct_email_address, token_key,
                           randomFlyerId, generateHeaders as gHdrs, debug,
                           async_wrap)
@@ -34,6 +34,10 @@ class PodimoClient:
         self.region = region
         self.locale = locale
         self.cookie_jar = None
+        self.proxies = None
+        if getenv("HTTP_PROXY"):
+            debug(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
+            self.proxies = { 'https': getenv("HTTP_PROXY") }
 
         if len(self.username) == 0 or len(self.password) == 0:
             raise ValueError("Empty username or password")
@@ -54,6 +58,7 @@ class PodimoClient:
         response = await async_wrap(self.scraper.post)(GRAPHQL_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
+                                        proxies = self.proxies,
                                         json={"query": query, "variables": variables}
                                     )
         if response.status_code != 200:
