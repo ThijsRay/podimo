@@ -2,3 +2,4 @@ gql[aiohttp]
 feedgen
 quart
 hypercorn
+cloudscraper
