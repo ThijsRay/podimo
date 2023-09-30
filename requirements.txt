@@ -1,5 +1,6 @@
-gql[aiohttp]
-feedgen
-quart
-hypercorn
-cloudscraper
+aiohttp~=3.8.5
+feedgen~=0.9.0
+quart~=0.18.4
+hypercorn~=0.14.4
+cloudscraper~=1.2.71
+werkzeug~=2.3.7
