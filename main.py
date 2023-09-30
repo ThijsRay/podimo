@@ -122,7 +122,7 @@ async def index():
             error += "Podcast ID is not valid"
         if region is None or region == "":
             error += "Region is required"
-        elif region not in REGIONS:
+        elif region not in [region_code for (region_code, _) in REGIONS]:
             error += "Region is not valid"
         if locale is None or locale == "":
             error += "Locale is required"
@@ -173,7 +173,7 @@ def split_username_region_locale(string):
     if len(s) == 3:
         return tuple(s)
     else:
-        return (s[0], REGIONS[0], LOCALES[0])
+        return (s[0], 'nl', 'nl-NL')
 
 
 def token_key(username, password):
@@ -190,7 +190,7 @@ async def serve_feed(username, password, podcast_id):
         return Response("Invalid podcast id format", 400, {})
 
     username, region, locale = split_username_region_locale(username)
-    if region not in REGIONS:
+    if region not in [region_code for (region_code, _) in REGIONS]:
         return Response("Invalid region", 400, {})
     if locale not in LOCALES:
         return Response("Invalid locale", 400, {})

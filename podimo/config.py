@@ -46,5 +46,26 @@ PODCAST_CACHE_TIME = 15 * 60 # seconds = 15 minutes
 # The time that the content information is cached
 HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days
 
-LOCALES = ['nl-NL', 'de-DE']
-REGIONS = ['nl', 'de']
+LOCALES = [
+        'nl-NL',
+        'de-DE',
+        'da-DK',
+        'es-ES',
+        'en-US',
+        'es-MX',
+        'no-NO',
+        'fi-FI',
+        'en-GB'
+]
+REGIONS = [
+        ('nl', 'Nederland'),
+        ('de', 'Deutschland'),
+        ('dk', 'Danmark'),
+        ('es', 'España'),
+        ('latam', 'America latina'),
+        ('en', 'International'),
+        ('mx', 'Mexico'),
+        ('no', 'Norge'),
+        ('fi', 'Suomi'),
+        ('uk', 'United Kingdom')
+]

@@ -35,8 +35,8 @@ any normal podcast player.
 
   <label for="region">Region</label><br />
   <select name="region" id="region">
-    {% for region in regions %}
-    <option>{{ region }}</option>
+    {% for (country_code, region) in regions %}
+    <option value="{{country_code}}">{{ region }}</option>
     {% endfor %}
   </select>
   <br />
