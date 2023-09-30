@@ -19,7 +19,9 @@
 
 import cloudscraper
 from podimo.config import GRAPHQL_URL, LOCAL_PROXY_URL
-from podimo.utils import is_correct_email_address, token_key, randomFlyerId, generateHeaders as gHdrs, debug
+from podimo.utils import (is_correct_email_address, token_key,
+                          randomFlyerId, generateHeaders as gHdrs, debug,
+                          async_wrap)
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 from os import getenv
@@ -48,6 +50,17 @@ class PodimoClient:
     def generateHeaders(self, authorization):
         return gHdrs(authorization, self.locale) 
 
+    async def post(self, headers, query, variables):
+        response = await async_wrap(self.scraper.post)(GRAPHQL_URL,
+                                        headers=headers,
+                                        cookies=self.cookie_jar,
+                                        json={"query": query, "variables": variables}
+                                    )
+        if response.status_code != 200:
+            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        result = response.json()["data"]
+        return result
+
     # This gets the authentication token that is required for subsequent requests
     # as an anonymous user
     async def getPreregisterToken(self):
@@ -68,17 +81,8 @@ class PodimoClient:
                 }
             }
         """
-
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
-        response = self.scraper.post(GRAPHQL_URL, 
-                                        headers=headers, 
-                                        cookies=self.cookie_jar, 
-                                        json={"query": query, "variables": variables}
-                                    )
-        if response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
-        result = response.json()["data"]
-
+        result = await self.post(headers, query, variables)
         self.preauth_token = result["tokenWithPreregisterUser"]["token"]
         return self.preauth_token
 
@@ -95,15 +99,7 @@ class PodimoClient:
             }
         """
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
-        response = self.scraper.post(GRAPHQL_URL, 
-                                        headers=headers, 
-                                        cookies=self.cookie_jar, 
-                                        json={"query": query, "variables": variables}
-                                    )
-        if response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
-        result = response.json()["data"]
-
+        result = await self.post(headers, query, variables)
         self.prereg_id = result["userOnboardingFlow"]["id"]
         return self.prereg_id
 
@@ -132,16 +128,7 @@ class PodimoClient:
             "locale": self.locale,
             "preregisterId": self.prereg_id,
         }
-        response = self.scraper.post(GRAPHQL_URL, 
-                                        headers=headers, 
-                                        cookies=self.cookie_jar, 
-                                        json={"query": query, "variables": variables}
-                                    )
-        
-        if response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
-        result = response.json()["data"]
-
+        result = await self.post(headers, query, variables)
         self.token = result["tokenWithCredentials"]["token"]
         if self.token:
             return self.token
@@ -205,16 +192,7 @@ class PodimoClient:
             "offset": 0,
             "sorting": "PUBLISHED_DESCENDING",
         }
-        response = self.scraper.post(GRAPHQL_URL, 
-                                        headers=headers, 
-                                        cookies=self.cookie_jar, 
-                                        json={"query": query, "variables": variables}
-                                    )
-        if response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
-        result = response.json()["data"]
-
-
+        result = await self.post(headers, query, variables)
         print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
         insertIntoPodcastCache(podcast_id, result)
         return result
