@@ -222,7 +222,7 @@ async def urlHeadInfo(session, id, url, locale):
 
     print("HEAD request to", url, file=sys.stderr)
     async with session.head(
-        url, allow_redirects=True, headers=generateHeaders(None, locale)
+        url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
     ) as response:
         content_length = 0
         content_type, _ = guess_type(url)
