@@ -53,8 +53,8 @@ def is_correct_email_address(username):
 def generateHeaders(authorization, locale):
     headers = {
         'user-os': 'android',
-        'user-agent': 'Podimo/2.45.1 build 566/Android 33',
-        'user-version': '2.45.1',
+        'user-agent': 'Podimo/2.50.0 build 585/Android 34',
+        'user-version': '2.50.0',
         'user-locale': locale,
         "user-unique-id": randomHexId(16)
     }
