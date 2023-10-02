@@ -34,6 +34,7 @@ from podimo.config import *
 from podimo.utils import generateHeaders, randomHexId
 import podimo.cache as cache
 import cloudscraper
+import traceback
 
 # Setup Quart, used for serving the web pages
 app = Quart(__name__)
@@ -99,6 +100,7 @@ async def check_auth(username, password, region, locale, scraper):
 
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
+        traceback.print_exc()
     return None
 
 podcast_id_pattern = re.compile(r"[0-9a-fA-F\-]+")
