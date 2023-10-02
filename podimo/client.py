@@ -33,10 +33,6 @@ class PodimoClient:
         self.region = region
         self.locale = locale
         self.cookie_jar = None
-        self.proxies = None
-        if getenv("HTTP_PROXY"):
-            debug(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
-            self.proxies = { 'http': getenv("HTTP_PROXY") }
 
         if len(self.username) == 0 or len(self.password) == 0:
             raise ValueError("Empty username or password")
@@ -55,7 +51,6 @@ class PodimoClient:
         response = await async_wrap(scraper.post)(GRAPHQL_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
-                                        proxies = self.proxies,
                                         json={"query": query, "variables": variables},
                                         timeout=(6.05, 12.05)
                                     )

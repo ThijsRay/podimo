@@ -37,6 +37,7 @@ import cloudscraper
 
 # Setup Quart, used for serving the web pages
 app = Quart(__name__)
+proxy = {}
 
 def example():
     return f"""Example
@@ -197,6 +198,7 @@ async def serve_feed(username, password, podcast_id):
         return Response("Invalid locale", 400, {})
 
     with cloudscraper.create_scraper() as scraper:
+        scraper.proxies = proxy
         client = await check_auth(username, password, region, locale, scraper)
         if not client:
             return authenticate()
@@ -330,6 +332,9 @@ async def spawn_web_server():
     await serve(app, config)
 
 async def main():
+    if getenv("HTTP_PROXY"):
+        print(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
+        proxy = { 'http': getenv("HTTP_PROXY") }
     tasks = [spawn_web_server()]
     await asyncio.gather(*tasks)
 
