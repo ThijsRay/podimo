@@ -33,6 +33,7 @@ from urllib.parse import quote
 from podimo.config import *
 from podimo.utils import generateHeaders, randomHexId
 import podimo.cache as cache
+import cloudscraper
 
 # Setup Quart, used for serving the web pages
 app = Quart(__name__)
@@ -85,13 +86,13 @@ def initialize_client(username: str, password: str, region: str, locale: str) ->
     client.cookie_jar = cache.cookie_jars[key]
     return client
 
-async def check_auth(username, password, region, locale):
+async def check_auth(username, password, region, locale, scraper):
     try:
         client = initialize_client(username, password, region, locale)
         if client.token:
             return client
 
-        await client.podimoLogin()
+        await client.podimoLogin(scraper)
         cache.insertIntoTokenCache(client.key, client.token)
         return client
 
@@ -195,24 +196,25 @@ async def serve_feed(username, password, podcast_id):
     if locale not in LOCALES:
         return Response("Invalid locale", 400, {})
 
-    client = await check_auth(username, password, region, locale)
-    if not client:
-        return authenticate()
+    with cloudscraper.create_scraper() as scraper:
+        client = await check_auth(username, password, region, locale, scraper)
+        if not client:
+            return authenticate()
 
-    # Get a list of valid podcasts
-    try:
-        podcasts = await podcastsToRss(
-            podcast_id, await client.getPodcasts(podcast_id), locale
-        )
-    except Exception as e:
-        exception = str(e)
-        if "Podcast not found" in exception:
-            return Response(
-                "Podcast not found. Are you sure you have the correct ID?", 404, {}
+        # Get a list of valid podcasts
+        try:
+            podcasts = await podcastsToRss(
+                podcast_id, await client.getPodcasts(podcast_id, scraper), locale
             )
-        print(f"Error while fetching podcasts: {exception}", file=sys.stderr)
-        return Response("Something went wrong while fetching the podcasts", 500, {})
-    return Response(podcasts, mimetype="text/xml")
+        except Exception as e:
+            exception = str(e)
+            if "Podcast not found" in exception:
+                return Response(
+                    "Podcast not found. Are you sure you have the correct ID?", 404, {}
+                )
+            print(f"Error while fetching podcasts: {exception}", file=sys.stderr)
+            return Response("Something went wrong while fetching the podcasts", 500, {})
+        return Response(podcasts, mimetype="text/xml")
 
 
 async def urlHeadInfo(session, id, url, locale):
