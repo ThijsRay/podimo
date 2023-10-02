@@ -323,6 +323,9 @@ async def podcastsToRss(podcast_id, data, locale):
 async def spawn_web_server():
     config = Config()
     config.bind = [PODIMO_BIND_HOST]
+    config.read_timeout = 60
+    config.graceful_timeout = 5
+    config.backlog = 1000
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     await serve(app, config)
 
