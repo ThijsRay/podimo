@@ -17,7 +17,6 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-import cloudscraper
 from podimo.config import GRAPHQL_URL
 from podimo.utils import (is_correct_email_address, token_key,
                           randomFlyerId, generateHeaders as gHdrs, debug,
@@ -34,10 +33,6 @@ class PodimoClient:
         self.region = region
         self.locale = locale
         self.cookie_jar = None
-        self.proxies = None
-        if getenv("HTTP_PROXY"):
-            debug(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
-            self.proxies = { 'https': getenv("HTTP_PROXY") }
 
         if len(self.username) == 0 or len(self.password) == 0:
             raise ValueError("Empty username or password")
@@ -46,29 +41,27 @@ class PodimoClient:
         if not is_correct_email_address(username):
             return ValueError("Email is not in the correct format")
         
-        self.scraper = cloudscraper.create_scraper()
-
         self.key = token_key(username, password)
         self.token = None
 
     def generateHeaders(self, authorization):
         return gHdrs(authorization, self.locale) 
 
-    async def post(self, headers, query, variables):
-        response = await async_wrap(self.scraper.post)(GRAPHQL_URL,
+    async def post(self, headers, query, variables, scraper):
+        response = await async_wrap(scraper.post)(GRAPHQL_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
-                                        proxies = self.proxies,
-                                        json={"query": query, "variables": variables}
+                                        json={"query": query, "variables": variables},
+                                        timeout=(6.05, 12.05)
                                     )
-        if response.status_code != 200:
+        if response is None or response.status_code != 200:
             raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
         result = response.json()["data"]
         return result
 
     # This gets the authentication token that is required for subsequent requests
     # as an anonymous user
-    async def getPreregisterToken(self):
+    async def getPreregisterToken(self, scraper):
         headers = self.generateHeaders(None)
         
         debug("AuthorizationPreregisterUser")
@@ -87,13 +80,13 @@ class PodimoClient:
             }
         """
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
-        result = await self.post(headers, query, variables)
+        result = await self.post(headers, query, variables, scraper)
         self.preauth_token = result["tokenWithPreregisterUser"]["token"]
         return self.preauth_token
 
 
     # Gets an "onboarding ID" that is used during login
-    async def getOnboardingId(self):
+    async def getOnboardingId(self, scraper):
         headers = self.generateHeaders(self.preauth_token)
         debug("OnboardingQuery")
         query = """
@@ -104,43 +97,43 @@ class PodimoClient:
             }
         """
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
-        result = await self.post(headers, query, variables)
+        result = await self.post(headers, query, variables, scraper)
         self.prereg_id = result["userOnboardingFlow"]["id"]
         return self.prereg_id
 
 
-    async def podimoLogin(self):
-        await self.getPreregisterToken()
-        await self.getOnboardingId()
+    async def podimoLogin(self, scraper):
+            await self.getPreregisterToken(scraper)
+            await self.getOnboardingId(scraper)
 
-        headers = self.generateHeaders(self.preauth_token)
-        debug("AuthorizationAuthorize")
-        query = """
-            query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
-                tokenWithCredentials(
-                email: $email
-                password: $password
-                locale: $locale
-                preregisterId: $preregisterId
-            ) {
-                token
+            headers = self.generateHeaders(self.preauth_token)
+            debug("AuthorizationAuthorize")
+            query = """
+                query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
+                    tokenWithCredentials(
+                    email: $email
+                    password: $password
+                    locale: $locale
+                    preregisterId: $preregisterId
+                ) {
+                    token
+                    }
                 }
+            """
+            variables = {
+                "email": self.username,
+                "password": self.password,
+                "locale": self.locale,
+                "preregisterId": self.prereg_id,
             }
-        """
-        variables = {
-            "email": self.username,
-            "password": self.password,
-            "locale": self.locale,
-            "preregisterId": self.prereg_id,
-        }
-        result = await self.post(headers, query, variables)
-        self.token = result["tokenWithCredentials"]["token"]
-        if self.token:
-            return self.token
-        else:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+            result = await self.post(headers, query, variables, scraper)
+            self.token = result["tokenWithCredentials"]["token"]
+            if self.token:
+                return self.token
+            else:
+                raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
 
-    async def getPodcasts(self, podcast_id):
+    async def getPodcasts(self, podcast_id, scraper):
         podcast = getCacheEntry(podcast_id, podcast_cache)
         if podcast:
             timestamp, _ = podcast_cache[podcast_id]
@@ -197,7 +190,7 @@ class PodimoClient:
             "offset": 0,
             "sorting": "PUBLISHED_DESCENDING",
         }
-        result = await self.post(headers, query, variables)
+        result = await self.post(headers, query, variables, scraper)
         print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
         insertIntoPodcastCache(podcast_id, result)
         return result
