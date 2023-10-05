@@ -54,8 +54,10 @@ class PodimoClient:
                                         json={"query": query, "variables": variables},
                                         timeout=(6.05, 12.05)
                                     )
-        if response is None or response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        if response is None:
+            raise RuntimeError(f"Could not receive response for query: {query}")
+        if response.status_code != 200:
+            raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code}")
         result = response.json()["data"]
         return result
 
@@ -127,11 +129,15 @@ class PodimoClient:
                 "preregisterId": self.prereg_id,
             }
             result = await self.post(headers, query, variables, scraper)
+            tokenWithCredentials = result["tokenWithCredentials"]
+            if not tokenWithCredentials:
+                raise ValueError("Invalid Podimo credentials, did not receive tokenWithCredentials")
+
             self.token = result["tokenWithCredentials"]["token"]
             if self.token:
                 return self.token
             else:
-                raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+                raise ValueError("Invalid Podimo credentials, did not receive token")
 
     async def getPodcasts(self, podcast_id, scraper):
         podcast = getCacheEntry(podcast_id, podcast_cache)
