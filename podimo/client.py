@@ -54,9 +54,13 @@ class PodimoClient:
                                         json={"query": query, "variables": variables},
                                         timeout=(6.05, 12.05)
                                     )
-        if response is None or response.status_code != 200:
-            raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+        if response is None:
+            raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
+        if response.status_code != 200:
+            raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
         result = response.json()["data"]
+        if result is None:
+            raise RuntimeError(f"Podimo returned no valid data for query {query.strip()[:30]}")
         return result
 
     # This gets the authentication token that is required for subsequent requests
@@ -81,7 +85,12 @@ class PodimoClient:
         """
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
         result = await self.post(headers, query, variables, scraper)
+        tokenWithPreregisterUser = result["tokenWithPreregisterUser"]
+        if not tokenWithPreregisterUser:
+            raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser")
         self.preauth_token = result["tokenWithPreregisterUser"]["token"]
+        if not self.preauth_token:
+            raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser token")
         return self.preauth_token
 
 
@@ -127,11 +136,15 @@ class PodimoClient:
                 "preregisterId": self.prereg_id,
             }
             result = await self.post(headers, query, variables, scraper)
+            tokenWithCredentials = result["tokenWithCredentials"]
+            if not tokenWithCredentials:
+                raise ValueError("Invalid Podimo credentials, did not receive tokenWithCredentials")
+
             self.token = result["tokenWithCredentials"]["token"]
             if self.token:
                 return self.token
             else:
-                raise ValueError("Invalid Podimo credentials or Podimo is unreachable")
+                raise ValueError("Invalid Podimo credentials, did not receive token")
 
     async def getPodcasts(self, podcast_id, scraper):
         podcast = getCacheEntry(podcast_id, podcast_cache)

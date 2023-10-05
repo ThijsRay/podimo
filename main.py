@@ -100,7 +100,8 @@ async def check_auth(username, password, region, locale, scraper):
 
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
-        traceback.print_exc()
+        if DEBUG:
+            traceback.print_exc()
     return None
 
 podcast_id_pattern = re.compile(r"[0-9a-fA-F\-]+")
