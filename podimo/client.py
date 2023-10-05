@@ -55,9 +55,9 @@ class PodimoClient:
                                         timeout=(6.05, 12.05)
                                     )
         if response is None:
-            raise RuntimeError(f"Could not receive response for query: {query}")
+            raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
         if response.status_code != 200:
-            raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code}")
+            raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
         result = response.json()["data"]
         return result
 
