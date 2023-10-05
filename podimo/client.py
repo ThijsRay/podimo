@@ -59,6 +59,8 @@ class PodimoClient:
         if response.status_code != 200:
             raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
         result = response.json()["data"]
+        if result is None:
+            raise RuntimeError(f"Podimo returned no valid data for query {query.strip()[:30]}")
         return result
 
     # This gets the authentication token that is required for subsequent requests
@@ -83,7 +85,12 @@ class PodimoClient:
         """
         variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
         result = await self.post(headers, query, variables, scraper)
+        tokenWithPreregisterUser = result["tokenWithPreregisterUser"]
+        if not tokenWithPreregisterUser:
+            raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser")
         self.preauth_token = result["tokenWithPreregisterUser"]["token"]
+        if not self.preauth_token:
+            raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser token")
         return self.preauth_token
 
 
