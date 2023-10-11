@@ -194,6 +194,7 @@ class PodimoClient:
                 imageUrl
                 description
                 datetime
+                publishDatetime
                 title
                 audio {
                 url

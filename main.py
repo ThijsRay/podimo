@@ -287,7 +287,7 @@ async def addFeedEntry(fg, episode, session, locale):
     fe.guid(episode["id"])
     fe.title(episode["title"])
     fe.description(episode["description"])
-    fe.pubDate(episode["datetime"])
+    fe.pubDate(episode["publishDatetime"])
 
     url, duration = extract_audio_url(episode)
     if url is None:
