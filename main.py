@@ -288,6 +288,7 @@ async def addFeedEntry(fg, episode, session, locale):
     fe.title(episode["title"])
     fe.description(episode["description"])
     fe.pubDate(episode["publishDatetime"])
+    fe.podcast.itunes_image(episode["imageUrl"])
 
     url, duration = extract_audio_url(episode)
     if url is None:
