@@ -336,7 +336,7 @@ async def podcastsToRss(podcast_id, data, locale):
         artist = podcast["authorName"]
         if artist is None:
             artist = last_episode["artist"]
-        fg.author({"name": artist})
+        fg.podcast.itunes_author(artist)
 
         if not PUBLIC_FEEDS:
             fg.podcast.itunes_block(True)
