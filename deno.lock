@@ -4,6 +4,7 @@
     "specifiers": {
       "npm:puppeteer": "npm:puppeteer@21.3.8",
       "npm:puppeteer-extra": "npm:puppeteer-extra@3.3.6_puppeteer@21.3.8",
+      "npm:puppeteer-extra-plugin-repl": "npm:puppeteer-extra-plugin-repl@2.3.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8",
       "npm:puppeteer-extra-plugin-stealth": "npm:puppeteer-extra-plugin-stealth@2.11.2_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8"
     },
     "npm": {
@@ -142,6 +143,13 @@
           "ansi-styles": "ansi-styles@3.2.1",
           "escape-string-regexp": "escape-string-regexp@1.0.5",
           "supports-color": "supports-color@5.5.0"
+        }
+      },
+      "chalk@3.0.0": {
+        "integrity": "sha512-4D3B6Wf41KOYRFdszmDqMCGq5VV/uMAB273JILmO+3jAlh8X4qDtdtgCR3fxtbLEMzSx22QdhnDcJvu2u1fVwg==",
+        "dependencies": {
+          "ansi-styles": "ansi-styles@4.3.0",
+          "supports-color": "supports-color@7.2.0"
         }
       },
       "chromium-bidi@0.4.31_devtools-protocol@0.0.1179426": {
@@ -371,6 +379,10 @@
         "integrity": "sha512-sKJf1+ceQBr4SMkvQnBDNDtf4TXpVhVGateu0t918bl30FnbE2m4vNLX+VWe/dpjlb+HugGYzW7uQXH98HPEYw==",
         "dependencies": {}
       },
+      "has-flag@4.0.0": {
+        "integrity": "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==",
+        "dependencies": {}
+      },
       "http-proxy-agent@7.0.0": {
         "integrity": "sha512-+ZT+iBxVUQ1asugqnD6oWoRiS25AkjNfG085dKJGtGxkdwLQrMKU5wJr2bOOFAXzKcTuqq+7fZlTMgG3SRfIYQ==",
         "dependencies": {
@@ -545,6 +557,10 @@
           "wrappy": "wrappy@1.0.2"
         }
       },
+      "ow@0.4.0": {
+        "integrity": "sha512-kJNzxUgVd6EF5LoGs+s2/etJPwjfRDLXPTCfEgV8At77sRrV+PSFA8lcoW2HF15Qd455mIR2Stee/2MzDiFBDA==",
+        "dependencies": {}
+      },
       "pac-proxy-agent@7.0.1": {
         "integrity": "sha512-ASV8yU4LLKBAjqIPMbrgtaKIvxQri/yh2OpI+S6hVa9JRkUI3Y3NPFbfngDtY7oFtSMD3w31Xns89mDa3Feo5A==",
         "dependencies": {
@@ -630,6 +646,16 @@
           "debug": "debug@4.3.4",
           "devtools-protocol": "devtools-protocol@0.0.1179426",
           "ws": "ws@8.14.2"
+        }
+      },
+      "puppeteer-extra-plugin-repl@2.3.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8": {
+        "integrity": "sha512-MlyZMI2uKgWp/OZWfsnFQTe0aOLruigb3FUByQJAccmN5WycPEO6pMn9jH7XgV2IZ4DBues+nFcamfECkukaQQ==",
+        "dependencies": {
+          "chalk": "chalk@3.0.0",
+          "debug": "debug@4.3.4",
+          "ow": "ow@0.4.0",
+          "puppeteer-extra": "puppeteer-extra@3.3.6_puppeteer@21.3.8",
+          "puppeteer-extra-plugin": "puppeteer-extra-plugin@3.2.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8"
         }
       },
       "puppeteer-extra-plugin-stealth@2.11.2_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8": {
@@ -762,6 +788,12 @@
         "integrity": "sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==",
         "dependencies": {
           "has-flag": "has-flag@3.0.0"
+        }
+      },
+      "supports-color@7.2.0": {
+        "integrity": "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==",
+        "dependencies": {
+          "has-flag": "has-flag@4.0.0"
         }
       },
       "tar-fs@3.0.4": {
