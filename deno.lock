@@ -4,6 +4,7 @@
     "specifiers": {
       "npm:puppeteer": "npm:puppeteer@21.3.8",
       "npm:puppeteer-extra": "npm:puppeteer-extra@3.3.6_puppeteer@21.3.8",
+      "npm:puppeteer-extra-plugin-block-resources": "npm:puppeteer-extra-plugin-block-resources@2.4.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8",
       "npm:puppeteer-extra-plugin-repl": "npm:puppeteer-extra-plugin-repl@2.3.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8",
       "npm:puppeteer-extra-plugin-stealth": "npm:puppeteer-extra-plugin-stealth@2.11.2_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8"
     },
@@ -646,6 +647,14 @@
           "debug": "debug@4.3.4",
           "devtools-protocol": "devtools-protocol@0.0.1179426",
           "ws": "ws@8.14.2"
+        }
+      },
+      "puppeteer-extra-plugin-block-resources@2.4.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8": {
+        "integrity": "sha512-WLxkytm3Nn6D+3N8lFMIi9lL9lLA1mTRHZAflR+zDs9/d1oOYVy52pWPaiQaetOObgfHDpPlHBmzHE2Yhr3ZnQ==",
+        "dependencies": {
+          "debug": "debug@4.3.4",
+          "puppeteer-extra": "puppeteer-extra@3.3.6_puppeteer@21.3.8",
+          "puppeteer-extra-plugin": "puppeteer-extra-plugin@3.2.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8"
         }
       },
       "puppeteer-extra-plugin-repl@2.3.3_puppeteer-extra@3.3.6__puppeteer@21.3.8_puppeteer@21.3.8": {
