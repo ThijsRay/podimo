@@ -33,7 +33,7 @@ from urllib.parse import quote
 from podimo.config import *
 from podimo.utils import generateHeaders, randomHexId
 import podimo.cache as cache
-import cloudscraper
+from zenrows import ZenRowsClient
 import traceback
 
 # Setup Quart, used for serving the web pages
@@ -200,7 +200,7 @@ async def serve_feed(username, password, podcast_id):
     if locale not in LOCALES:
         return Response("Invalid locale", 400, {})
 
-    with cloudscraper.create_scraper() as scraper:
+    with ZenRowsClient(ZENROWS_API_KEY) as scraper:
         scraper.proxies = proxies
         client = await check_auth(username, password, region, locale, scraper)
         if not client:
