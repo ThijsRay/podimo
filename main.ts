@@ -3,6 +3,7 @@ import StealthPlugin from 'npm:puppeteer-extra-plugin-stealth'
 import repl from 'npm:puppeteer-extra-plugin-repl'
 import resourceBlock from 'npm:puppeteer-extra-plugin-block-resources';
 import { Page, Browser, BrowserContext, executablePath, Puppeteer } from "npm:puppeteer";
+import { EventEmitter } from 'node:events';
 
 async function newBrowser() : Promise<Browser> {
   return puppeteer
@@ -12,8 +13,8 @@ async function newBrowser() : Promise<Browser> {
     }))
     .use(StealthPlugin())
     .launch({
-      // headless: "new",
-      headless: "false",
+      headless: "new",
+      // headless: "false",
       executablePath: executablePath(),
     });
 }
@@ -76,7 +77,9 @@ const interceptUrl = baseUrl + "ProfileResultsQuery";
 const operationName = "PodcastEpisodesResultsQuery";
 const targetUrl = baseUrl + operationName;
 
-async function interceptAndModify(page: Page, podcastId: string) {
+class InterceptEmitter extends EventEmitter {}
+
+async function interceptAndModify(page: Page, podcastId: string, emitter: InterceptEmitter) {
   // Setup post data
   const episodesLimit = 500;
   const payload = JSON.stringify({
@@ -89,6 +92,12 @@ async function interceptAndModify(page: Page, podcastId: string) {
       "sorting": "PUBLISHED_DESCENDING",
     }
   });
+
+  // Setup emitters to transfer Request back
+  let callback = null;
+  emitter.on("response", (cb) => {
+    callback = cb;
+  })
 
   // Capture the request, and send a new request
   const client = await page.target().createCDPSession();
@@ -107,27 +116,11 @@ async function interceptAndModify(page: Page, podcastId: string) {
             body: payload
           }).then((response) => response.json())
             .then((data) => {
-              console.log(data);
-              // Error
-              // {
-              //   errors: [
-              //     {
-              //       message: "User does not have enough privilege",
-              //       locations: [ { line: 36, column: 3 } ],
-              //       path: [ "episodes", 0, "streamMedia" ],
-              //       code: "forbidden",
-              //       extensions: {
-              //         exception: {
-              //           code: "forbidden",
-              //           message: "User does not have enough privilege"
-              //         }
-              //       }
-              //     }
-              //   ],
-              //   data: null
-              // }
-
-              console.log("get podcasts finished");
+              if ("errors" in data) {
+                callback(new Response(`{"errors": ${data[errors]}}`, {status: 500}));
+              } else {
+                callback(new Response(`{"ok": ${data}}`, {status: 200}));
+              }
             })
       });
     } else if (request.url == authUrl) {
@@ -135,33 +128,16 @@ async function interceptAndModify(page: Page, podcastId: string) {
         if (base64Encoded) {
           body = atob(body);
         }
-        console.log(body);
-        // Error
-        // {
-        // "errors": [
-        //   {
-        //     "message": "Invalid password",
-        //     "locations": [
-        //       {
-        //         "line": 2,
-        //         "column": 3
-        //       }
-        //     ],
-        //     "path": [
-        //       "tokenWithCredentials"
-        //     ],
-        //     "code": "invalid_password",
-        //     "extensions": {
-        //       "exception": {
-        //         "code": "invalid_password",
-        //         "message": "Invalid password"
-        //       }
-        //     }
-        //   }
-        // ],
-        // "data": null
-        // }
-        console.log("auth finished");
+        try {
+          const body_json = JSON.parse(body);
+          if ("errors" in body_json) {
+            if (callback != null) {
+              callback(new Response(body, {status: 500}));
+            }
+          }
+        } catch (e) {
+          callback(new Response(`{"errors: "Expected JSON response from Podimo: ${e}"}`, {status: 500}));
+        }
       });
     }
   });
@@ -182,23 +158,38 @@ async function interceptAndModify(page: Page, podcastId: string) {
 }
 
 async function getPodcastInfo(page: Page, username: string, password: string, podcastId: string) : Promise<Response> {
-  await page.setViewport({width: 390, height: 844})
-  await page.goto('https://open.podimo.com');
+  try {
+    await page.setViewport({width: 390, height: 844})
+    await page.goto('https://open.podimo.com');
 
-  // Setup the interceptor
-  interceptAndModify(page, podcastId);
+    // Setup the interceptor
+    const emitter = new InterceptEmitter();
+    interceptAndModify(page, podcastId, emitter);
+    const response = new Promise((resolve) => {
+      emitter.emit('response', (value) => {
+        resolve(value);
+      })
+    });
 
-  // Login to the web player
-  const emailInput = "input[name=email]";
-  await page.waitForSelector(emailInput, {"visible": true, "timeout": ANIMATION_TIMEOUT});
-  await page.type(emailInput, username);
+    // Login to the web player
+    const emailInput = "input[name=email]";
+    await page.waitForSelector(emailInput, {"visible": true, "timeout": ANIMATION_TIMEOUT});
+    await page.type(emailInput, username);
 
-  const passwordInput = "input[type=password]";
-  await page.waitForSelector(passwordInput, {"visible": true, "timeout": ANIMATION_TIMEOUT});
-  await page.type(passwordInput, password);
+    const passwordInput = "input[type=password]";
+    await page.waitForSelector(passwordInput, {"visible": true, "timeout": ANIMATION_TIMEOUT});
+    await page.type(passwordInput, password);
 
-  const submitButton = "button[type=submit]";
-  await page.waitForSelector(submitButton, {"visible": true, "timeout": ANIMATION_TIMEOUT});
+    const submitButton = "button[type=submit]";
+    await page.waitForSelector(submitButton, {"visible": true, "timeout": ANIMATION_TIMEOUT});
+
+    await page.click(submitButton);
+    return await response;
+
+    return new Response(`{"ok"}`, {status: 200});
+  } catch (e) {
+    return new Response(`{"error": ${e}}`, {status: 500});
+  }
 
   // Submit and wait
   // await Promise.all([
@@ -229,8 +220,6 @@ async function getPodcastInfo(page: Page, username: string, password: string, po
     //   "data": null
     //  }
 
-    page.click(submitButton);
-    return new Response();
   // ]);
 }
 
@@ -239,43 +228,63 @@ async function endSession(session: BrowserContext) {
 }
 
 let browser = null;
-async function getBrowser() {
+async function getBrowser() : Promise<Browser> {
   if (browser == null) {
     browser = await newBrowser();
-  } else {
-    browser = await puppeteer.connect().catch(_ => {
-      browser.close();
-      return newBrowser();
-    })
   }
-  return browser
+  return browser;
+}
+
+type SessionAndResponse = {
+  session: BrowserContext;
+  response: Promise<Response>
+}
+
+async function spawnSessionAndGetInfo(browser: Browser, username: str, password: str, podcastId: str) : Promise<SessionAndResponse> {
+  return newSession(browser).then(session => {
+    const response = newPage(session).then(page => {
+      return getPodcastInfo(page, username, password, podcastId).then(podcastInfo => {
+        return podcastInfo
+      })
+    });
+    return { session, response }
+  });
 }
 
 async function requestHandler(req: Request) : Response {
   if (req.method != "POST") {
-    return new Response("{}", {status: 405});
+    return new Response("{\"error\": \"Must be a POST request\"}", {status: 405});
   }
 
   try {
     const data = await req.json();
     if ("username" in data && "password" in data && "podcastId" in data) {
-      const browser = await getBrowser();
-      const session = await newSession(browser);
+      const _browser = await getBrowser();
       try {
-        const username = data["username"];
-        const password = data["password"];
-        const podcastId = data["podcastId"];
+        const { session, response } = await spawnSessionAndGetInfo(_browser, data["username"], data["password"], data["podcastId"])
+        const resolvedResponse = await response;
+        endSession(session);
+        return resolvedResponse
+      } catch (e) {
+        // Something failed, let's try to restart the browser
+        // and do it again
+        try {
+          await browser.close();
+        } catch (e) {}
+        browser = null;
+        const _browser = await getBrowser();
 
-        const page = await newPage(session);
-        const info = await getPodcastInfo(page, username, password, podcastId);
-      } finally {
-        await endSession(session);
+        const { session, response } = await spawnSessionAndGetInfo(_browser, data["username"], data["password"], data["podcastId"])
+        const resolvedResponse = await response;
+        endSession(session);
+        return resolvedResponse
       }
+      return new Response(`{"error": "Spawning failed twice"}`, {status: 500})
     } else {
-      return new Response("{error: \"Missing a field\"}", {status: 400});
+      return new Response(`{"error": "Missing a field"}`, {status: 400});
     }
   } catch (e) {
-    return new Response("{error: \"" + e + "\"}", {status: 400});
+    return new Response(`{"error": ${e}}`, {status: 400});
   }
 }
 
