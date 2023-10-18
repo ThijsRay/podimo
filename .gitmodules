@@ -1,3 +1,0 @@
-[submodule "lib/puppeteer-intercept-and-modify-requests"]
-	path = lib/puppeteer-intercept-and-modify-requests
-	url = https://github.com/ThijsRay/puppeteer-intercept-and-modify-requests
