@@ -2,7 +2,7 @@ import puppeteer from 'npm:puppeteer-extra'
 import StealthPlugin from 'npm:puppeteer-extra-plugin-stealth'
 import repl from 'npm:puppeteer-extra-plugin-repl'
 import resourceBlock from 'npm:puppeteer-extra-plugin-block-resources';
-import { Page, Browser, BrowserContext, executablePath } from "npm:puppeteer";
+import { Page, Browser, BrowserContext, executablePath, Puppeteer } from "npm:puppeteer";
 
 async function newBrowser() : Promise<Browser> {
   return puppeteer
@@ -12,8 +12,8 @@ async function newBrowser() : Promise<Browser> {
     }))
     .use(StealthPlugin())
     .launch({
-      headless: "new",
-      // headless: false,
+      // headless: "new",
+      headless: "false",
       executablePath: executablePath(),
     });
 }
@@ -71,14 +71,14 @@ fragment EpisodeBase on PodcastEpisode {
 `
 // The request that will be hijacked, and the new payload
 const baseUrl = "https://open.podimo.com/graphql?queryName="
-// const baseUrl = "http://localhost:8080/?queryName=";
+const authUrl = baseUrl + "LoginResultsQuery";
 const interceptUrl = baseUrl + "ProfileResultsQuery";
 const operationName = "PodcastEpisodesResultsQuery";
 const targetUrl = baseUrl + operationName;
 
 async function interceptAndModify(page: Page, podcastId: string) {
   // Setup post data
-const episodesLimit = 50;
+  const episodesLimit = 500;
   const payload = JSON.stringify({
     "operationName": operationName,
     "query": query,
@@ -92,43 +92,78 @@ const episodesLimit = 50;
 
   // Capture the request, and send a new request
   const client = await page.target().createCDPSession();
-  client.once('Fetch.requestPaused', (event) => {
+  client.on('Fetch.requestPaused', (event) => {
     const { requestId, request } = event;
 
-    client.send('Fetch.fulfillRequest', {
-      requestId,
-      responseCode: 200,
-      body: btoa("{}")
-    }).then(() => {
-        fetch(targetUrl, {
-          method: request.method,
-          headers: request.headers,
-          body: payload
-        }).then((response) => response.json())
-          .then((data) => {
-            console.log(data);
-            // Error
-            // {
-            //   errors: [
-            //     {
-            //       message: "User does not have enough privilege",
-            //       locations: [ { line: 36, column: 3 } ],
-            //       path: [ "episodes", 0, "streamMedia" ],
-            //       code: "forbidden",
-            //       extensions: {
-            //         exception: {
-            //           code: "forbidden",
-            //           message: "User does not have enough privilege"
-            //         }
-            //       }
-            //     }
-            //   ],
-            //   data: null
-            // }
+    if (request.url == interceptUrl) {
+      client.send('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: 200,
+        body: btoa("{}")
+      }).then(() => {
+          fetch(targetUrl, {
+            method: request.method,
+            headers: request.headers,
+            body: payload
+          }).then((response) => response.json())
+            .then((data) => {
+              console.log(data);
+              // Error
+              // {
+              //   errors: [
+              //     {
+              //       message: "User does not have enough privilege",
+              //       locations: [ { line: 36, column: 3 } ],
+              //       path: [ "episodes", 0, "streamMedia" ],
+              //       code: "forbidden",
+              //       extensions: {
+              //         exception: {
+              //           code: "forbidden",
+              //           message: "User does not have enough privilege"
+              //         }
+              //       }
+              //     }
+              //   ],
+              //   data: null
+              // }
 
-            console.log("Finished!");
-          })
-    })
+              console.log("get podcasts finished");
+            })
+      });
+    } else if (request.url == authUrl) {
+      client.send('Fetch.getResponseBody', { requestId }).then(({body, base64Encoded}) => {
+        if (base64Encoded) {
+          body = atob(body);
+        }
+        console.log(body);
+        // Error
+        // {
+        // "errors": [
+        //   {
+        //     "message": "Invalid password",
+        //     "locations": [
+        //       {
+        //         "line": 2,
+        //         "column": 3
+        //       }
+        //     ],
+        //     "path": [
+        //       "tokenWithCredentials"
+        //     ],
+        //     "code": "invalid_password",
+        //     "extensions": {
+        //       "exception": {
+        //         "code": "invalid_password",
+        //         "message": "Invalid password"
+        //       }
+        //     }
+        //   }
+        // ],
+        // "data": null
+        // }
+        console.log("auth finished");
+      });
+    }
   });
 
   // Issue requestPaused events when these requests happen
@@ -137,12 +172,19 @@ const episodesLimit = 50;
       {
         urlPattern: interceptUrl,
         requestStage: "Request"
+      },
+      {
+        urlPattern: authUrl,
+        requestStage: "Response"
       }
     ]
   });
 }
 
-async function getPodcastInfo(page: Page, username: string, password: string, podcastId: string) {
+async function getPodcastInfo(page: Page, username: string, password: string, podcastId: string) : Promise<Response> {
+  await page.setViewport({width: 390, height: 844})
+  await page.goto('https://open.podimo.com');
+
   // Setup the interceptor
   interceptAndModify(page, podcastId);
 
@@ -159,35 +201,88 @@ async function getPodcastInfo(page: Page, username: string, password: string, po
   await page.waitForSelector(submitButton, {"visible": true, "timeout": ANIMATION_TIMEOUT});
 
   // Submit and wait
-  await Promise.all([
-    page.waitForNavigation({timeout: ANIMATION_TIMEOUT}),
-    page.click(submitButton),
-  ]);
+  // await Promise.all([
+  //   page.waitForNavigation({timeout: ANIMATION_TIMEOUT}),
+    // Can fail if invalid credentials
+    //   {
+    //   "errors": [
+    //     {
+    //       "message": "Auth with credentials failed!",
+    //       "locations": [
+    //         {
+    //           "line": 2,
+    //           "column": 3
+    //         }
+    //       ],
+    //       "path": [
+    //         "tokenWithCredentials"
+    //       ],
+    //       "code": "auth_failed",
+    //       "extensions": {
+    //         "exception": {
+    //           "code": "auth_failed",
+    //           "message": "Auth with credentials failed!"
+    //         }
+    //       }
+    //     }
+    //   ],
+    //   "data": null
+    //  }
+
+    page.click(submitButton);
+    return new Response();
+  // ]);
 }
 
 async function endSession(session: BrowserContext) {
   await session.close();
 }
 
-async function main() {
-  const browser = await newBrowser();
+let browser = null;
+async function getBrowser() {
+  if (browser == null) {
+    browser = await newBrowser();
+  } else {
+    browser = await puppeteer.connect().catch(_ => {
+      browser.close();
+      return newBrowser();
+    })
+  }
+  return browser
+}
 
-  const session = await newSession(browser);
-  await newPage(session).then(async page => {
-    // Press the login button
-    //
-    await page.setViewport({width: 390, height: 844})
+async function requestHandler(req: Request) : Response {
+  if (req.method != "POST") {
+    return new Response("{}", {status: 405});
+  }
 
-    await page.goto('https://open.podimo.com');
-    // await page.goto('http://localhost:8080');
-    // page = await acceptCookies(page);
-    await getPodcastInfo(page, username, password, podcastId);
-  });
-  await endSession(session);
+  try {
+    const data = await req.json();
+    if ("username" in data && "password" in data && "podcastId" in data) {
+      const browser = await getBrowser();
+      const session = await newSession(browser);
+      try {
+        const username = data["username"];
+        const password = data["password"];
+        const podcastId = data["podcastId"];
 
-  await browser.close();
+        const page = await newPage(session);
+        const info = await getPodcastInfo(page, username, password, podcastId);
+      } finally {
+        await endSession(session);
+      }
+    } else {
+      return new Response("{error: \"Missing a field\"}", {status: 400});
+    }
+  } catch (e) {
+    return new Response("{error: \"" + e + "\"}", {status: 400});
+  }
+}
+
+function main() {
+  Deno.serve({port: 12105, hostname: "localhost"}, requestHandler);
 }
 
 if (import.meta.main) {
-  await main();
+  main();
 }
