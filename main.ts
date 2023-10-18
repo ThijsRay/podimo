@@ -64,10 +64,6 @@ fragment EpisodeBase on PodcastEpisode {
     url
     duration
   }
-  streamMedia {
-    duration
-    url
-  }
 }
 `
 // The request that will be hijacked, and the new payload
@@ -114,17 +110,22 @@ async function interceptAndModify(page: Page, podcastId: string, emitter: Interc
             method: request.method,
             headers: request.headers,
             body: payload
-          }).then((response) => response.json())
+          }).then((response) => {
+              return response.json()
+            })
             .then((data) => {
+              const response = JSON.stringify(data);
               if ("errors" in data) {
-                callback(new Response(`{"errors": ${data[errors]}}`, {status: 500}));
+                callback(new Response(response, {status: 500}));
               } else {
-                callback(new Response(`{"ok": ${data}}`, {status: 200}));
+                callback(new Response(`{"ok": ${response}}`, {status: 200}));
               }
             })
+      }).catch(e => {
+        callback(new Response(`{"errors": "Failed getting response back: ${e}"}`), {status: 500});
       });
     } else if (request.url == authUrl) {
-      client.send('Fetch.getResponseBody', { requestId }).then(({body, base64Encoded}) => {
+      client.send('Fetch.getResponseBody', { requestId }).then(async ({body, base64Encoded}) => {
         if (base64Encoded) {
           body = atob(body);
         }
@@ -133,10 +134,15 @@ async function interceptAndModify(page: Page, podcastId: string, emitter: Interc
           if ("errors" in body_json) {
             if (callback != null) {
               callback(new Response(body, {status: 500}));
+            } else {
+              callback(new Response(`{"errors": "Callback should not be null"}`), {status: 500});
             }
+          } else {
+            // Everything is fine, continue the request
+            await client.send('Fetch.continueResponse', {requestId})
           }
         } catch (e) {
-          callback(new Response(`{"errors: "Expected JSON response from Podimo: ${e}"}`, {status: 500}));
+          callback(new Response(`{"errors: "Expected JSON response from Podimo in auth: ${e}"}`, {status: 500}));
         }
       });
     }
