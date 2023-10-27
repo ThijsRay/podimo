@@ -29,6 +29,7 @@ import os
 PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
 PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
+ZENROWS_API_KEY = os.environ.get("ZENROWS_API_KEY", "")
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)
@@ -41,7 +42,7 @@ GRAPHQL_URL = "https://podimo.com/graphql"
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 
 # The time that a podcast feed is stored in cache
-PODCAST_CACHE_TIME = 15 * 60 # seconds = 15 minutes
+PODCAST_CACHE_TIME = int(os.environ.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
 
 # The time that the content information is cached
 HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days

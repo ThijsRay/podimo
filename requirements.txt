@@ -4,3 +4,4 @@ quart~=0.18.4
 hypercorn~=0.14.4
 cloudscraper~=1.2.71
 werkzeug~=2.3.7
+zenrows
