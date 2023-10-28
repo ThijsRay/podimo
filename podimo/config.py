@@ -19,16 +19,19 @@
 
 import os
 
-# You can overwrite the following three values with environmental variables
+# You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
 #                      This defaults to "podimo.thijs.sh".
 # - `PODIMO_BIND_HOST`: to what IP and port the Python webserver should bind.
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
+# - `CACHE_DIR`:       where do we store the cache.
+#                      Defaults to "./cache/".
 PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
 PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
+CACHE_DIR = os.environ.get("CACHE_DIR", "./cache/")
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)

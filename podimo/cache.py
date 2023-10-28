@@ -20,25 +20,26 @@
 from podimo.config import *
 from typing import Dict, Tuple
 from time import time
+from diskcache import Cache 
 
 # Store the authentication token in a dictionary
 # so it is not necessary to request a new token for every request. The key is
 # derived from the provided username and password (see the `token_key` function).
-TOKENS: Dict[str, Tuple[int, str]] = dict()
+TOKENS: Dict[str, Tuple[int, str]] = Cache(CACHE_DIR + 'tokens_cache')
 
 # Give each user its own cookie jar to keep track of cookies that are
 # being set and used between different requests.
-cookie_jars = dict()
+cookie_jars = Cache(CACHE_DIR + 'cookie_cache')
 
-url_cache = dict()
-podcast_cache = dict()
+url_cache = Cache(CACHE_DIR + 'url_cache')
+podcast_cache = Cache(CACHE_DIR + 'podcast_cache')
 
 # Podcast players support the display of the file size of each episode.
 # Podimo does not provide this information directly, so we do a HEAD request
 # to the episode file locations. This gives us the Content-Length which is
 # the file size of the episode. The file size of an episode doesn't change often,
 # which makes it perfect for caching.
-head_cache: Dict[str, Tuple[int, Tuple[str, str]]] = dict()
+head_cache: Dict[str, Tuple[int, Tuple[str, str]]] = Cache(CACHE_DIR + 'head_cache')
 
 def getCacheEntry(key: str, cache, delete=True):
     if key in cache:
