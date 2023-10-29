@@ -343,10 +343,13 @@ async def main():
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    print(f"""Spawning server on {PODIMO_BIND_HOST}
-          Config: 
-          - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
-          - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
-          - PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
-        """)
+    if DEBUG:
+        print(f"""Spawning server on {PODIMO_BIND_HOST}
+Configuration: 
+- PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
+- PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
+- PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
+- ZENROWS_API_KEY: {ZENROWS_API_KEY}
+- DEBUG: {DEBUG}
+- PODIMO_PROTOCOL {PODIMO_PROTOCOL}""", file=sys.stderr)
     asyncio.run(main())
