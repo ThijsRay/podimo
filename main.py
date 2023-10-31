@@ -20,6 +20,7 @@
 import asyncio
 import re
 import sys
+import logging
 from os import getenv
 from podimo.client import PodimoClient
 from feedgen.feed import FeedGenerator
@@ -31,7 +32,7 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
-from podimo.utils import generateHeaders, randomHexId
+from podimo.utils import generateHeaders, randomHexId, debug 
 import podimo.cache as cache
 import cloudscraper
 import traceback
@@ -39,6 +40,13 @@ import traceback
 # Setup Quart, used for serving the web pages
 app = Quart(__name__)
 proxies = dict()
+
+#Setup logging
+logging.basicConfig(
+    format="%(levelname)s | %(asctime)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+    level=logging.INFO,
+)
 
 def example():
     return f"""Example
@@ -99,8 +107,9 @@ async def check_auth(username, password, region, locale, scraper):
         return client
 
     except Exception as e:
-        print(f"An error occurred: {e}", file=sys.stderr)
+        logging.error(f"An error occurred: {e}")
         if DEBUG:
+            exception=str(e)
             traceback.print_exc()
     return None
 
@@ -217,7 +226,7 @@ async def serve_feed(username, password, podcast_id):
                 return Response(
                     "Podcast not found. Are you sure you have the correct ID?", 404, {}
                 )
-            print(f"Error while fetching podcasts: {exception}", file=sys.stderr)
+            logging.error(f"Error while fetching podcasts: {exception}")
             return Response("Something went wrong while fetching the podcasts", 500, {})
         return Response(podcasts, mimetype="text/xml")
 
@@ -227,7 +236,7 @@ async def urlHeadInfo(session, id, url, locale):
     if entry:
         return entry
 
-    print("HEAD request to", url, file=sys.stderr)
+    debug(f"HEAD request to {url}")
     async with session.head(
         url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
     ) as response:
@@ -337,19 +346,19 @@ async def spawn_web_server():
 async def main():
     if getenv("HTTP_PROXY"):
         global proxies
-        print(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
+        logging.info(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
         proxies['https'] = getenv("HTTP_PROXY")
     tasks = [spawn_web_server()]
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     if DEBUG:
-        print(f"""Spawning server on {PODIMO_BIND_HOST}
+        logging.info(f"""Spawning server on {PODIMO_BIND_HOST}
 Configuration: 
 - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
 - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
 - PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
 - ZENROWS_API_KEY: {ZENROWS_API_KEY}
 - DEBUG: {DEBUG}
-- PODIMO_PROTOCOL {PODIMO_PROTOCOL}""", file=sys.stderr)
+- PODIMO_PROTOCOL {PODIMO_PROTOCOL}""")
     asyncio.run(main())
