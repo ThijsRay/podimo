@@ -26,7 +26,7 @@ import os
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
-PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "jouwip:12104")
+PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "yourip:12104")
 PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
 ZENROWS_API = os.environ.get("ZENROWS_API", "APIKEY")
