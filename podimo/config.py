@@ -26,12 +26,13 @@ import os
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
-PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
-PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
-PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
+PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "jouwip:12104")
+PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
+PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
+ZENROWS_API = os.environ.get("ZENROWS_API", "APIKEY")
 
 # Enable extra logging in debugging mode
-DEBUG = os.environ.get("DEBUG", False)
+DEBUG = os.environ.get("DEBUG", True)
 
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
@@ -41,7 +42,7 @@ GRAPHQL_URL = "https://podimo.com/graphql"
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 
 # The time that a podcast feed is stored in cache
-PODCAST_CACHE_TIME = 15 * 60 # seconds = 15 minutes
+PODCAST_CACHE_TIME = 43200 # seconds = 12 hours
 
 # The time that the content information is cached
 HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days
