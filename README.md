@@ -8,7 +8,13 @@ This tool allows you to stream Podimo podcasts with your preferred podcast playe
 
 
 ## Usage
-The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below.
+The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to create a Zenrows account to bypass Podimo's anti-bot mechanisms.
+
+## Setting up a Zenrows account
+You can create a free account, which gives you 1000 free api credits.
+
+1. Go to [app.zenrows.com/register](https://app.zenrows.com/register) and create a free account
+2. Copy your API key and make sure to add it to the `ZENROWS_API` environment variable (`-e`) in the Docker run command
 
 ## Instructions for self-hosting (with Docker)
 1. Clone this repository and enter the newly created directory
