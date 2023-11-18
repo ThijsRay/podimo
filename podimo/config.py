@@ -32,7 +32,7 @@ PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
 ZENROWS_API = os.environ.get("ZENROWS_API", "APIKEY")
 
 # Enable extra logging in debugging mode
-DEBUG = os.environ.get("DEBUG", True)
+DEBUG = os.environ.get("DEBUG", False)
 
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
