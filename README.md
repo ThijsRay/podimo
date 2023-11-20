@@ -8,7 +8,13 @@ This tool allows you to stream Podimo podcasts with your preferred podcast playe
 
 
 ## Usage
-The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below.
+The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to create a Zenrows account to bypass Podimo's anti-bot mechanisms.
+
+## Setting up a Zenrows account
+You can create a free account, which gives you 1000 free api credits.
+
+1. Go to [app.zenrows.com/register](https://app.zenrows.com/register) and create a free account
+2. Copy your API key and make sure to add it to the `ZENROWS_API` environment variable (`-e`) in the Docker run command
 
 ## Instructions for self-hosting (with Docker)
 1. Clone this repository and enter the newly created directory
@@ -24,11 +30,11 @@ docker build -t podimo:latest .
 
 3. Run the Docker image
 ```sh
-docker run --rm -e PODIMO_HOSTNAME=localhost -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -p 12104:12104 podimo:latest
+docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -e ZENROWS_API=APIKEY -p 12104:12104 podimo:latest
 ```
 For an explaination of what each environmental variable (`-e`) does, see the section on [configuration with environmental variables](#configuration).
 
-4. Visit http://localhost:12104. You should see the site now!
+4. Visit http://yourip:12104. You should see the site now!
 
 ## Installation for self-hosting (without Docker)
 Make sure you have a recent Python 3 version installed, as this is required for the steps below.
@@ -63,6 +69,7 @@ There are a few environmental variables that can configure this tool
 - `PODIMO_BIND_HOST` Sets the IP and port to which this tool should bind, defaults to `127.0.0.1:12104`.
 - `PODIMO_PROTOCOL` Sets the protocol that is displayed in the interface. For local 
 deployments it can be useful to set this to `http`. Defaults to `https`.
+- `ZENROWS_API` Sets the Zenrows API key for it to be used.
 - `DEBUG` Shows a bit more information that can be useful while debugging
 - `HTTP_PROXY` A URL for an HTTP proxy that can be used to rotate IP addresses to avoid being blocked by CloudFlare.
 
