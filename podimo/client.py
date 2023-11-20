@@ -49,7 +49,8 @@ class PodimoClient:
         return gHdrs(authorization, self.locale) 
 
     async def post(self, headers, query, variables, scraper):
-        scraper = ZenRowsClient(ZENROWS_API)
+        if ZENROWS_API is not None:
+            scraper = ZenRowsClient(ZENROWS_API)
         response = await async_wrap(scraper.post)(GRAPHQL_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
