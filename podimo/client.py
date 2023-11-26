@@ -48,7 +48,7 @@ class PodimoClient:
 
     async def post(self, headers, query, variables, scraper):
         if SCRAPER_API is not None:
-            POST_URL = f"http://api.scraperapi.com?api_key={SCRAPER_API}&url={GRAPHQL_URL}&keep_headers=true"
+            POST_URL = f"https://api.scraperapi.com?api_key={SCRAPER_API}&url={GRAPHQL_URL}&keep_headers=true"
         else :
             POST_URL = GRAPHQL_URL
         response = await async_wrap(scraper.post)(POST_URL,
