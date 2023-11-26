@@ -24,7 +24,6 @@ from podimo.utils import (is_correct_email_address, token_key,
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 import sys
-import requests
 
 class PodimoClient:
     def __init__(self, username: str, password: str, region: str, locale: str):
@@ -52,7 +51,7 @@ class PodimoClient:
             POST_URL = f"https://api.scraperapi.com?api_key={SCRAPER_API}&url={GRAPHQL_URL}&keep_headers=true"
         else :
             POST_URL = GRAPHQL_URL
-        response = await async_wrap(requests.post)(POST_URL,
+        response = await async_wrap(scraper.post)(POST_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
                                         json={"query": query, "variables": variables},
