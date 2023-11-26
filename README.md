@@ -36,7 +36,7 @@ docker build -t podimo:latest .
 3. Run the Docker image
 
 ```sh
-docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -e ZENROWS_API=APIKEY -p 12104:12104 podimo:latest
+docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -e SCRAPER_API=APIKEY -p 12104:12104 podimo:latest
 ```
 
 For an explaination of what each environmental variable (`-e`) does, see the section on [configuration with environmental variables](#configuration).
