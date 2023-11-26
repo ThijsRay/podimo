@@ -55,7 +55,7 @@ class PodimoClient:
                                         headers=headers,
                                         cookies=self.cookie_jar,
                                         json={"query": query, "variables": variables},
-                                        timeout=(6.05, 12.05)
+                                        timeout=(6.05, 30)
                                     )
         if response is None:
             raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
