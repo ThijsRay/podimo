@@ -29,7 +29,7 @@ import os
 PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "yourip:12104")
 PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
-ZENROWS_API = os.environ.get("ZENROWS_API", None)
+SCRAPER_API = os.environ.get("SCRAPER_API", None)
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)

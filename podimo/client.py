@@ -17,14 +17,12 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-from podimo.config import GRAPHQL_URL, ZENROWS_API
+from podimo.config import GRAPHQL_URL, SCRAPER_API
 from podimo.utils import (is_correct_email_address, token_key,
                           randomFlyerId, generateHeaders as gHdrs, debug,
                           async_wrap)
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
-from os import getenv
-from zenrows import ZenRowsClient
 import sys
 
 class PodimoClient:
@@ -41,17 +39,19 @@ class PodimoClient:
             raise ValueError("Username or password are too long")
         if not is_correct_email_address(username):
             return ValueError("Email is not in the correct format")
-        
+
         self.key = token_key(username, password)
         self.token = None
 
     def generateHeaders(self, authorization):
-        return gHdrs(authorization, self.locale) 
+        return gHdrs(authorization, self.locale)
 
     async def post(self, headers, query, variables, scraper):
-        if ZENROWS_API is not None:
-            scraper = ZenRowsClient(ZENROWS_API)
-        response = await async_wrap(scraper.post)(GRAPHQL_URL,
+        if SCRAPER_API is not None:
+            POST_URL = f"https://api.scraperapi.com?api_key={SCRAPER_API}&url={GRAPHQL_URL}&keep_headers=true"
+        else :
+            POST_URL = GRAPHQL_URL
+        response = await async_wrap(scraper.post)(POST_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
                                         json={"query": query, "variables": variables},
@@ -70,7 +70,6 @@ class PodimoClient:
     # as an anonymous user
     async def getPreregisterToken(self, scraper):
         headers = self.generateHeaders(None)
-        
         debug("AuthorizationPreregisterUser")
         query = """
             query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $countryCode: String, $appsFlyerId: String) {
