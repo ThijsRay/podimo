@@ -83,7 +83,7 @@ There are a few environmental variables that can configure this tool
 - `PODIMO_BIND_HOST` Sets the IP and port to which this tool should bind, defaults to `127.0.0.1:12104`.
 - `PODIMO_PROTOCOL` Sets the protocol that is displayed in the interface. For local
   deployments it can be useful to set this to `http`. Defaults to `https`.
-- `ZENROWS_API` Sets the Zenrows API key for it to be used.
+- `SCRAPER_API` Sets the ScraperAPI key for it to be used.
 - `DEBUG` Shows a bit more information that can be useful while debugging
 - `HTTP_PROXY` A URL for an HTTP proxy that can be used to rotate IP addresses to avoid being blocked by CloudFlare.
 
