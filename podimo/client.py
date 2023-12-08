@@ -17,13 +17,15 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-from podimo.config import GRAPHQL_URL, SCRAPER_API
+from podimo.config import GRAPHQL_URL, SCRAPER_API, ZENROWS_API
 from podimo.utils import (is_correct_email_address, token_key,
                           randomFlyerId, generateHeaders as gHdrs, debug,
                           async_wrap)
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 import sys
+if ZENROWS_API is not None:
+    from zenrows import ZenRowsClient
 
 class PodimoClient:
     def __init__(self, username: str, password: str, region: str, locale: str):
