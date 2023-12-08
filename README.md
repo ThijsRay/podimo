@@ -9,7 +9,7 @@ This tool allows you to stream Podimo podcasts with your preferred podcast playe
 
 ## Usage
 
-The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to create a Zenrows or ScraperAPI account to bypass Podimo's anti-bot mechanisms.
+The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to either create a Zenrows or ScraperAPI account to bypass Podimo's anti-bot mechanisms.
 
 ## Setting up a Zenrows account
 You can create a free account, which gives you 1000 free api credits.
