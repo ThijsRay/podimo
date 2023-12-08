@@ -52,7 +52,7 @@ class PodimoClient:
         elif ZENROWS_API is not None:
             scraper = ZenRowsClient(ZENROWS_API)
             POST_URL = GRAPHQL_URL
-        else :
+        else:
             POST_URL = GRAPHQL_URL
         response = await async_wrap(scraper.post)(POST_URL,
                                         headers=headers,
