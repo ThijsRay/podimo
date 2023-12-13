@@ -6,17 +6,24 @@ Podimo is a proprietary podcasting player that enables you to listen to various 
 This tool allows you to stream Podimo podcasts with your preferred podcast player, without having to use the Podimo app.
 </div>
 
-
 ## Usage
-The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to create a Zenrows account to bypass Podimo's anti-bot mechanisms.
+The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to either create a Zenrows or ScraperAPI account to bypass Podimo's anti-bot mechanisms.
 
-## Setting up a Zenrows account
+### Setting up a Zenrows account
 You can create a free account, which gives you 1000 free api credits.
 
 1. Go to [app.zenrows.com/register](https://app.zenrows.com/register) and create a free account
 2. Copy your API key and make sure to add it to the `ZENROWS_API` environment variable (`-e`) in the Docker run command
 
+### Setting up a ScraperAPI account
+
+You can create a free account, which gives you 1000 free API credits per month.
+
+1. Go to [dashboard.scraperapi.com/signup](https://dashboard.scraperapi.com/signup) and create a free account
+2. Copy your API key and make sure to add it to the `SCRAPER_API` environment variable (`-e`) in the Docker run command
+
 ## Instructions for self-hosting (with Docker)
+
 1. Clone this repository and enter the newly created directory
 ```sh
 git clone https://github.com/ThijsRay/podimo
@@ -28,10 +35,13 @@ cd podimo
 docker build -t podimo:latest .
 ```
 
-3. Run the Docker image
+3. Run the Docker image.
+Make sure you set the correct environment variables, and to add the API keys for
+ZenRows or ScraperAPI if you decide to use those services.
 ```sh
-docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -e ZENROWS_API=APIKEY -p 12104:12104 podimo:latest
+docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -p 12104:12104 podimo:latest
 ```
+
 For an explaination of what each environmental variable (`-e`) does, see the section on [configuration with environmental variables](#configuration).
 
 4. Visit http://yourip:12104. You should see the site now!
@@ -60,16 +70,15 @@ pip install -r requirements.txt
 ```sh
 python main.py
 ```
-4. Visit http://localhost:12104. You should see the site now!
-
+5. Visit http://localhost:12104. You should see the site now!
 
 ## Configuration
 There are a few environmental variables that can configure this tool
 - `PODIMO_HOSTNAME` Sets the hostname that is displayed in the interface to a custom value, defaults to `podimo.thijs.sh`
 - `PODIMO_BIND_HOST` Sets the IP and port to which this tool should bind, defaults to `127.0.0.1:12104`.
-- `PODIMO_PROTOCOL` Sets the protocol that is displayed in the interface. For local 
-deployments it can be useful to set this to `http`. Defaults to `https`.
+- `PODIMO_PROTOCOL` Sets the protocol that is displayed in the interface. For local deployments it can be useful to set this to `http`. Defaults to `https`.
 - `ZENROWS_API` Sets the Zenrows API key for it to be used.
+- `SCRAPER_API` Sets the ScraperAPI API key for it to be used.
 - `DEBUG` Shows a bit more information that can be useful while debugging
 - `HTTP_PROXY` A URL for an HTTP proxy that can be used to rotate IP addresses to avoid being blocked by CloudFlare.
 
