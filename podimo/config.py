@@ -26,9 +26,9 @@ import os
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
-PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
-PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
-PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
+PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "yourip:12104")
+PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
+PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
 ZENROWS_API = os.environ.get("ZENROWS_API", None)
 SCRAPER_API = os.environ.get("SCRAPER_API", None)
 CACHE_DIR = os.environ.get("CACHE_DIR", "./cache/")
