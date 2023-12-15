@@ -123,7 +123,7 @@ class PodimoClient:
             await self.getOnboardingId(scraper)
 
             headers = self.generateHeaders(self.preauth_token)
-            debug("AuthorizationAuthorize")
+            debug(f"AuthorizationAuthorize user: {self.username}")
             query = """
                 query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
                     tokenWithCredentials(
@@ -157,7 +157,8 @@ class PodimoClient:
         podcast = getCacheEntry(podcast_id, podcast_cache)
         if podcast:
             timestamp, _ = podcast_cache[podcast_id]
-            print(f"Got podcast {podcast_id} from cache ({int(timestamp-time())} seconds left)", file=sys.stderr)
+            podcastName = self.getPodcastName(podcast)
+            debug(f"Got podcast '{podcastName}' ({podcast_id}) from cache ({int(timestamp-time())} seconds left)")
             return podcast
 
         headers = self.generateHeaders(self.token)
@@ -211,6 +212,14 @@ class PodimoClient:
             "sorting": "PUBLISHED_DESCENDING",
         }
         result = await self.post(headers, query, variables, scraper)
-        print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
+        # podcastName = result[0]['podcastName']
+        podcastName = self.getPodcastName(result)
+        debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
+        
+        # print(result) #Test 
         insertIntoPodcastCache(podcast_id, result)
         return result
+
+    def getPodcastName (self, podcast):
+        return list(podcast.values())[1]["title"]
+       

@@ -23,7 +23,14 @@ from hashlib import sha256
 from podimo.config import DEBUG
 from sys import stderr
 import asyncio
+import logging
 from functools import wraps, partial
+
+logging.basicConfig(
+    format="%(levelname)s | %(asctime)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+    level=logging.INFO,
+)
 
 def randomHexId(length: int):
     string = []
@@ -63,8 +70,7 @@ def generateHeaders(authorization, locale):
     return headers
 
 def debug(line):
-    if DEBUG:
-        print(line, file=stderr)
+    logging.info(line)
 
 
 def async_wrap(func):

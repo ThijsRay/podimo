@@ -19,18 +19,19 @@
 
 import os
 
-# You can overwrite the following three values with environmental variables
+# You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
 #                      This defaults to "podimo.thijs.sh".
 # - `PODIMO_BIND_HOST`: to what IP and port the Python webserver should bind.
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
-PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "yourip:12104")
-PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
-PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
+PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
+PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
+PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
 ZENROWS_API = os.environ.get("ZENROWS_API", None)
 SCRAPER_API = os.environ.get("SCRAPER_API", None)
+CACHE_DIR = os.environ.get("CACHE_DIR", "./cache/")
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)
@@ -43,7 +44,7 @@ GRAPHQL_URL = "https://podimo.com/graphql"
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 
 # The time that a podcast feed is stored in cache
-PODCAST_CACHE_TIME = 43200 # seconds = 12 hours
+PODCAST_CACHE_TIME = int(os.environ.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
 
 # The time that the content information is cached
 HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days
