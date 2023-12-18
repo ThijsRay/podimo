@@ -19,6 +19,10 @@
 
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from the `.env` file
+load_dotenv()
 
 # You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
