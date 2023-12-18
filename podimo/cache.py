@@ -25,7 +25,9 @@ from diskcache import Cache
 # Store the authentication token in a dictionary
 # so it is not necessary to request a new token for every request. The key is
 # derived from the provided username and password (see the `token_key` function).
-TOKENS = Cache(CACHE_DIR + 'tokens_cache')
+TOKENS = dict()
+if STORE_TOKENS_ON_DISK:
+    TOKENS = Cache(CACHE_DIR + 'tokens_cache')
 
 # Give each user its own cookie jar to keep track of cookies that are
 # being set and used between different requests.

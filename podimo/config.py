@@ -41,6 +41,9 @@ DEBUG = os.environ.get("DEBUG", False)
 # the API can be found.
 GRAPHQL_URL = "https://podimo.com/graphql"
 
+# Whether login tokens should be cached on disk, or only in memory
+STORE_TOKENS_ON_DISK = bool(os.environ.get("STORE_TOKENS_ON_DISK", True))
+
 # The time that a token is stored in cache
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 

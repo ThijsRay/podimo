@@ -216,7 +216,6 @@ class PodimoClient:
         podcastName = self.getPodcastName(result)
         logging.debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
         
-        # print(result) #Test 
         insertIntoPodcastCache(podcast_id, result)
         return result
 

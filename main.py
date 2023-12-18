@@ -32,7 +32,7 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
-from podimo.utils import generateHeaders, randomHexId, debug 
+from podimo.utils import generateHeaders, randomHexId
 import podimo.cache as cache
 import cloudscraper
 import traceback
@@ -109,7 +109,6 @@ async def check_auth(username, password, region, locale, scraper):
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         if DEBUG:
-            exception=str(e)
             traceback.print_exc()
     return None
 
@@ -236,7 +235,7 @@ async def urlHeadInfo(session, id, url, locale):
     if entry:
         return entry
 
-    debug(f"HEAD request to {url}")
+    logging.debug(f"HEAD request to {url}")
     async with session.head(
         url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
     ) as response:
@@ -358,7 +357,9 @@ Configuration:
 - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
 - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
 - PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
-- ZENROWS_API_KEY: {ZENROWS_API_KEY}
+- ZENROWS_API: {ZENROWS_API}
+- SCRAPER_API: {SCRAPER_API}
+- STORE_TOKENS_ON_DISK: {STORE_TOKENS_ON_DISK}
 - DEBUG: {DEBUG}
 - PODIMO_PROTOCOL {PODIMO_PROTOCOL}""")
     asyncio.run(main())
