@@ -18,6 +18,7 @@
 # permissions and limitations under the Licence.
 
 import os
+import logging
 
 # You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
@@ -72,3 +73,14 @@ REGIONS = [
         ('fi', 'Suomi'),
         ('uk', 'United Kingdom')
 ]
+
+# If DEBUG mode is enabled, modify the logging output
+log_level = logging.INFO
+if DEBUG:
+    log_level = logging.DEBUG
+
+logging.basicConfig(
+    format="%(levelname)s | %(asctime)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+    level=log_level
+)
