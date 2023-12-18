@@ -36,7 +36,7 @@ PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
 ZENROWS_API = os.environ.get("ZENROWS_API", None)
 SCRAPER_API = os.environ.get("SCRAPER_API", None)
-CACHE_DIR = os.environ.get("CACHE_DIR", "./cache/")
+CACHE_DIR = os.path.abspath(os.environ.get("CACHE_DIR", "./cache"))
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)
