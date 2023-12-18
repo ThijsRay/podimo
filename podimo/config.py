@@ -49,13 +49,13 @@ GRAPHQL_URL = "https://podimo.com/graphql"
 STORE_TOKENS_ON_DISK = bool(os.environ.get("STORE_TOKENS_ON_DISK", True))
 
 # The time that a token is stored in cache
-TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
+TOKEN_CACHE_TIME = int(os.environ.get("TOKEN_CACHE_TIME", 3600 * 24 * 5))  # seconds = 5 days by default
 
 # The time that a podcast feed is stored in cache
 PODCAST_CACHE_TIME = int(os.environ.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
 
 # The time that the content information is cached
-HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days
+HEAD_CACHE_TIME = int(os.environ.get("HEAD_CACHE_TIME", 7 * 60 * 60 * 24))  # seconds = 7 days by default
 
 LOCALES = [
         'nl-NL',

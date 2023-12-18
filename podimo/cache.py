@@ -60,7 +60,7 @@ def insertCacheEntry(key, value, timeout, cache):
     cache[key] = (time() + timeout, value)
 
 def insertIntoTokenCache(key, value):
-    insertCacheEntry(key, value, TOKEN_TIMEOUT, TOKENS)
+    insertCacheEntry(key, value, TOKEN_CACHE_TIME, TOKENS)
 
 def insertIntoHeadCache(key, content_length, content_type):
     insertCacheEntry(key, (content_length, content_type), HEAD_CACHE_TIME, head_cache)
