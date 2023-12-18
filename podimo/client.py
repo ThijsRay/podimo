@@ -19,11 +19,11 @@
 
 from podimo.config import GRAPHQL_URL, SCRAPER_API, ZENROWS_API
 from podimo.utils import (is_correct_email_address, token_key,
-                          randomFlyerId, generateHeaders as gHdrs, debug,
+                          randomFlyerId, generateHeaders as gHdrs,
                           async_wrap)
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
-import sys
+import logging
 if ZENROWS_API is not None:
     from zenrows import ZenRowsClient
 
@@ -75,7 +75,7 @@ class PodimoClient:
     # as an anonymous user
     async def getPreregisterToken(self, scraper):
         headers = self.generateHeaders(None)
-        debug("AuthorizationPreregisterUser")
+        logging.debug("AuthorizationPreregisterUser")
         query = """
             query AuthorizationPreregisterUser($locale: String!, $referenceUser: String, $countryCode: String, $appsFlyerId: String) {
                 tokenWithPreregisterUser(
@@ -104,7 +104,7 @@ class PodimoClient:
     # Gets an "onboarding ID" that is used during login
     async def getOnboardingId(self, scraper):
         headers = self.generateHeaders(self.preauth_token)
-        debug("OnboardingQuery")
+        logging.debug("OnboardingQuery")
         query = """
             query OnboardingQuery {
                 userOnboardingFlow {
@@ -123,7 +123,7 @@ class PodimoClient:
             await self.getOnboardingId(scraper)
 
             headers = self.generateHeaders(self.preauth_token)
-            debug("AuthorizationAuthorize")
+            logging.debug(f"AuthorizationAuthorize user: {self.username}")
             query = """
                 query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
                     tokenWithCredentials(
@@ -157,11 +157,12 @@ class PodimoClient:
         podcast = getCacheEntry(podcast_id, podcast_cache)
         if podcast:
             timestamp, _ = podcast_cache[podcast_id]
-            print(f"Got podcast {podcast_id} from cache ({int(timestamp-time())} seconds left)", file=sys.stderr)
+            podcastName = self.getPodcastName(podcast)
+            logging.debug(f"Got podcast '{podcastName}' ({podcast_id}) from cache ({int(timestamp-time())} seconds left)")
             return podcast
 
         headers = self.generateHeaders(self.token)
-        debug("ChannelEpisodesQuery")
+        logging.debug("ChannelEpisodesQuery")
         query = """
             query ChannelEpisodesQuery($podcastId: String!, $limit: Int!, $offset: Int!, $sorting: PodcastEpisodeSorting) {
                 episodes: podcastEpisodes(
@@ -211,6 +212,13 @@ class PodimoClient:
             "sorting": "PUBLISHED_DESCENDING",
         }
         result = await self.post(headers, query, variables, scraper)
-        print(f"Fetched podcast {podcast_id} directly", file=sys.stderr)
+        # podcastName = result[0]['podcastName']
+        podcastName = self.getPodcastName(result)
+        logging.debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
+        
         insertIntoPodcastCache(podcast_id, result)
         return result
+
+    def getPodcastName (self, podcast):
+        return list(podcast.values())[1]["title"]
+       

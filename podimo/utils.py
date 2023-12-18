@@ -20,8 +20,6 @@
 from email.utils import parseaddr
 from random import choice, randint
 from hashlib import sha256
-from podimo.config import DEBUG
-from sys import stderr
 import asyncio
 from functools import wraps, partial
 
@@ -61,11 +59,6 @@ def generateHeaders(authorization, locale):
     if authorization:
         headers["authorization"] = authorization
     return headers
-
-def debug(line):
-    if DEBUG:
-        print(line, file=stderr)
-
 
 def async_wrap(func):
     @wraps(func)

@@ -18,8 +18,9 @@
 # permissions and limitations under the Licence.
 
 import os
+import logging
 
-# You can overwrite the following three values with environmental variables
+# You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
 #                      This defaults to "podimo.thijs.sh".
 # - `PODIMO_BIND_HOST`: to what IP and port the Python webserver should bind.
@@ -31,6 +32,7 @@ PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "0.0.0.0:12104")
 PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "http")
 ZENROWS_API = os.environ.get("ZENROWS_API", None)
 SCRAPER_API = os.environ.get("SCRAPER_API", None)
+CACHE_DIR = os.environ.get("CACHE_DIR", "./cache/")
 
 # Enable extra logging in debugging mode
 DEBUG = os.environ.get("DEBUG", False)
@@ -39,11 +41,14 @@ DEBUG = os.environ.get("DEBUG", False)
 # the API can be found.
 GRAPHQL_URL = "https://podimo.com/graphql"
 
+# Whether login tokens should be cached on disk, or only in memory
+STORE_TOKENS_ON_DISK = bool(os.environ.get("STORE_TOKENS_ON_DISK", True))
+
 # The time that a token is stored in cache
 TOKEN_TIMEOUT = 3600 * 24 * 5  # seconds = 5 days
 
 # The time that a podcast feed is stored in cache
-PODCAST_CACHE_TIME = 43200 # seconds = 12 hours
+PODCAST_CACHE_TIME = int(os.environ.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
 
 # The time that the content information is cached
 HEAD_CACHE_TIME = 7 * 60 * 60 * 24  # seconds = 7 days
@@ -71,3 +76,14 @@ REGIONS = [
         ('fi', 'Suomi'),
         ('uk', 'United Kingdom')
 ]
+
+# If DEBUG mode is enabled, modify the logging output
+log_level = logging.INFO
+if DEBUG:
+    log_level = logging.DEBUG
+
+logging.basicConfig(
+    format="%(levelname)s | %(asctime)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+    level=log_level
+)
