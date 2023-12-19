@@ -343,10 +343,10 @@ async def spawn_web_server():
     await serve(app, config)
 
 async def main():
-    if getenv("HTTP_PROXY"):
+    if HTTP_PROXY:
         global proxies
-        logging.info(f"Running with https proxy defined in environmental variable HTTP_PROXY: {getenv('HTTP_PROXY')}")
-        proxies['https'] = getenv("HTTP_PROXY")
+        logging.info(f"Running with https proxy defined in environmental variable HTTP_PROXY: {HTTP_PROXY}")
+        proxies['https'] = HTTP_PROXY
     tasks = [spawn_web_server()]
     await asyncio.gather(*tasks)
 
@@ -358,6 +358,7 @@ Configuration:
 - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
 - PODIMO_BIND_HOST: {PODIMO_BIND_HOST}
 - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
+- HTTP_PROXY: {HTTP_PROXY}
 - ZENROWS_API: {ZENROWS_API}
 - SCRAPER_API: {SCRAPER_API}
 - CACHE_DIR: {CACHE_DIR}

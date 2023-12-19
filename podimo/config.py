@@ -19,10 +19,14 @@
 
 import os
 import logging
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
-# Load environment variables from the `.env` file
-load_dotenv()
+# Load variables from the `.env` file first,
+# and overwrite them with environment variables
+config = {
+    **dotenv_values(".env"),
+    **os.environ
+}
 
 # You can overwrite the following four values with environmental variables
 # - `PODIMO_HOSTNAME`: the hostname that is displayed to the user.
@@ -31,31 +35,32 @@ load_dotenv()
 #                       Defaults to "127.0.0.1:12104"
 # - `PODIMO_PROTOCOL`: what protocol is being used for all links that are
 #                      displayed to the user. Defaults to "https".
-PODIMO_HOSTNAME = os.environ.get("PODIMO_HOSTNAME", "podimo.thijs.sh")
-PODIMO_BIND_HOST = os.environ.get("PODIMO_BIND_HOST", "127.0.0.1:12104")
-PODIMO_PROTOCOL = os.environ.get("PODIMO_PROTOCOL", "https")
-ZENROWS_API = os.environ.get("ZENROWS_API", None)
-SCRAPER_API = os.environ.get("SCRAPER_API", None)
-CACHE_DIR = os.path.abspath(os.environ.get("CACHE_DIR", "./cache"))
+PODIMO_HOSTNAME = str(config.get("PODIMO_HOSTNAME", "localhost:12104"))
+PODIMO_BIND_HOST = str(config.get("PODIMO_BIND_HOST", "127.0.0.1:12104"))
+PODIMO_PROTOCOL = str(config.get("PODIMO_PROTOCOL", "http"))
+HTTP_PROXY = str(config.get("HTTP_PROXY", None))
+ZENROWS_API = str(config.get("ZENROWS_API", None))
+SCRAPER_API = str(config.get("SCRAPER_API", None))
+CACHE_DIR = os.path.abspath(str(config.get("CACHE_DIR", "./cache")))
 
 # Enable extra logging in debugging mode
-DEBUG = os.environ.get("DEBUG", False)
+DEBUG = bool(str(config.get("DEBUG", None)).lower() in ['true', '1', 't', 'y', 'yes'])
 
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
 GRAPHQL_URL = "https://podimo.com/graphql"
 
 # Whether login tokens should be cached on disk, or only in memory
-STORE_TOKENS_ON_DISK = bool(os.environ.get("STORE_TOKENS_ON_DISK", True))
+STORE_TOKENS_ON_DISK = bool(str(config.get("STORE_TOKENS_ON_DISK", True)).lower() in ['true', '1', 't', 'y', 'yes'])
 
 # The time that a token is stored in cache
-TOKEN_CACHE_TIME = int(os.environ.get("TOKEN_CACHE_TIME", 3600 * 24 * 5))  # seconds = 5 days by default
+TOKEN_CACHE_TIME = int(config.get("TOKEN_CACHE_TIME", 3600 * 24 * 5))  # seconds = 5 days by default
 
 # The time that a podcast feed is stored in cache
-PODCAST_CACHE_TIME = int(os.environ.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
+PODCAST_CACHE_TIME = int(config.get("PODCAST_CACHE_TIME", "21600"))  # Default = 3600 * 6 = 6 hours
 
 # The time that the content information is cached
-HEAD_CACHE_TIME = int(os.environ.get("HEAD_CACHE_TIME", 7 * 60 * 60 * 24))  # seconds = 7 days by default
+HEAD_CACHE_TIME = int(config.get("HEAD_CACHE_TIME", 7 * 60 * 60 * 24))  # seconds = 7 days by default
 
 LOCALES = [
         'nl-NL',
