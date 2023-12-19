@@ -51,7 +51,7 @@ Make sure you set the correct environment variables if you want to configure any
 See [.env.example](.env.example) for a full list
 of configuration options.
 ```sh
-docker run --rm -e PODIMO_HOSTNAME=localhost:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -p 12104:12104 podimo:latest
+docker run --rm -e PODIMO_BIND_HOST=0.0.0.0:12104 -p 12104:12104 -v $(pwd)/cache:/src/cache podimo:latest
 ```
 
 4. Visit http://localhost:12104. You should see the site now!
