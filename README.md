@@ -6,23 +6,34 @@ Podimo is a proprietary podcasting player that enables you to listen to various 
 This tool allows you to stream Podimo podcasts with your preferred podcast player, without having to use the Podimo app.
 </div>
 
-## Usage
-The easiest way to use it is via [podimo.thijs.sh](https://podimo.thijs.sh). You can also host it yourself by following the instructions below. It's necessary to either create a Zenrows or ScraperAPI account to bypass Podimo's anti-bot mechanisms.
+## Recommended installation for self-hosting
+Make sure you have a recent Python 3 version installed, as this is required for the steps below.
 
-### Setting up a Zenrows account
-You can create a free account, which gives you 1000 free api credits.
+1. Clone this repository and enter the newly created directory
+```sh
+git clone https://github.com/ThijsRay/podimo
+cd podimo
+```
 
-1. Go to [app.zenrows.com/register](https://app.zenrows.com/register) and create a free account
-2. Copy your API key and make sure to add it to the `ZENROWS_API` environment variable (`-e`) in the Docker run command
+2. Get the latest update and install it as a service with
+```sh
+make update
+make install
+```
 
-### Setting up a ScraperAPI account
+3. Run the program with
+```sh
+make start
+```
 
-You can create a free account, which gives you 1000 free API credits per month.
+4. Visit http://localhost:12104. You should see the site now! If you want to reach it from
+other machines, make sure to edit the configuration with
+```sh
+make config
+```
+A complete list of all configuration options can be found in the [.env.example file](.env.example)
 
-1. Go to [dashboard.scraperapi.com/signup](https://dashboard.scraperapi.com/signup) and create a free account
-2. Copy your API key and make sure to add it to the `SCRAPER_API` environment variable (`-e`) in the Docker run command
-
-## Instructions for self-hosting (with Docker)
+## Instructions for self-hosting with Docker
 
 1. Clone this repository and enter the newly created directory
 ```sh
@@ -36,53 +47,33 @@ docker build -t podimo:latest .
 ```
 
 3. Run the Docker image.
-Make sure you set the correct environment variables, and to add the API keys for
-ZenRows or ScraperAPI if you decide to use those services.
+Make sure you set the correct environment variables if you want to configure any variables.
+See [.env.example](.env.example) for a full list
+of configuration options.
 ```sh
-docker run --rm -e PODIMO_HOSTNAME=yourip:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -p 12104:12104 podimo:latest
+docker run --rm -e PODIMO_HOSTNAME=localhost:12104 -e PODIMO_BIND_HOST=0.0.0.0:12104 -e PODIMO_PROTOCOL=http -p 12104:12104 podimo:latest
 ```
 
-For an explaination of what each environmental variable (`-e`) does, see the section on [configuration with environmental variables](#configuration).
-
-4. Visit http://yourip:12104. You should see the site now!
-
-## Installation for self-hosting (without Docker)
-Make sure you have a recent Python 3 version installed, as this is required for the steps below.
-
-1. Clone this repository and enter the newly created directory
-```sh
-git clone https://github.com/ThijsRay/podimo
-cd podimo
-```
-
-2. (Optional) Create a virtual environment to install the Python packages in
-```sh
-vitualenv venv
-source venv/bin/activate
-```
-
-3. Install the required packages with 
-```sh
-pip install -r requirements.txt
-```
-
-4. Run the program with
-```sh
-python main.py
-```
-5. Visit http://localhost:12104. You should see the site now!
+4. Visit http://localhost:12104. You should see the site now!
 
 ## Configuration
-There are a few environmental variables that can configure this tool
-- `PODIMO_HOSTNAME` Sets the hostname that is displayed in the interface to a custom value, defaults to `podimo.thijs.sh`
-- `PODIMO_BIND_HOST` Sets the IP and port to which this tool should bind, defaults to `127.0.0.1:12104`.
-- `PODIMO_PROTOCOL` Sets the protocol that is displayed in the interface. For local deployments it can be useful to set this to `http`. Defaults to `https`.
-- `ZENROWS_API` Sets the Zenrows API key for it to be used.
-- `SCRAPER_API` Sets the ScraperAPI API key for it to be used.
-- `DEBUG` Shows a bit more information that can be useful while debugging
-- `HTTP_PROXY` A URL for an HTTP proxy that can be used to rotate IP addresses to avoid being blocked by CloudFlare.
+A complete list of all configuration options can be found in the [.env.example file](.env.example)
 
-Other configuration values can be found in `podimo/config.py`, but they generally don't have to be changed.
+## Bot detection
+Depending on your usage patterns, it might be necessary to bypass Podimo's anti-bot mechanisms.
+This can be done through a Zenrows, ScraperAPI or a generic HTTP proxy.
+
+### Setting up a Zenrows account
+You can create a free trial account for Zenrows
+
+1. Go to [app.zenrows.com/register](https://app.zenrows.com/register) and create a free account
+2. Copy your API key and make sure to add it to the `ZENROWS_API` environment variable
+
+### Setting up a ScraperAPI account
+You can create a free trial account for ScraperAPI
+
+1. Go to [dashboard.scraperapi.com/signup](https://dashboard.scraperapi.com/signup) and create a free account
+2. Copy your API key and make sure to add it to the `SCRAPER_API` environment variable
 
 ## Privacy
 The script keeps track of a few things in memory:
@@ -90,54 +81,11 @@ The script keeps track of a few things in memory:
 - A cryptographic hash that is calculated based on your username and password.
 - A Podimo access token, which is kept in memory for accessing pages after logging in.
 
-This data is _never_ written to the disk and it is _never_ logged. The hosted script on [podimo.thijs.sh](https://podimo.thijs.sh) runs behind an `nginx` reverse proxy that requires HTTPS and does not keep any logs. The `nginx` configuration is:
-```nginx
-limit_req_zone $binary_remote_addr zone=podimo_limit:10m rate=1r/s;
-server {
-	server_name podimo.thijs.sh;
-	access_log off;
-	error_log   /dev/null   crit;
-
-	location / {
-		proxy_pass http://127.0.0.1:12104;
-
-		limit_req zone=podimo_limit burst=5;
-		limit_req_status 429;
-
-		add_header Strict-Transport-Security "max-age=31536000;" always;
-
-		add_header Cache-Control "public, max-age=300";
-		add_header X-Accel-Buffering no;
-		proxy_buffering off;
-
-		proxy_set_header X-Real-IP $remote_addr;
-	}
-
-	listen [::]:443 ssl ipv6only=on;
-	listen 443 ssl;
-	ssl_certificate /etc/letsencrypt/live/podimo.thijs.sh/fullchain.pem; 
-	ssl_certificate_key /etc/letsencrypt/live/podimo.thijs.sh/privkey.pem;
-	include /etc/letsencrypt/options-ssl-nginx.conf;
-	ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-}
-
-
-server {
-	if ($host = podimo.thijs.sh) {
-		return 301 https://$host$request_uri;
-	}
-
-	access_log off;
-	listen 80;
-	listen [::]:80;
-	server_name podimo.thijs.sh;
-	return 404;
-}
-```
+This data is not written to the disk (unless `STORE_TOKENS_ON_DISK` is set to true) and it is _never_ logged.
 
 # License
 ```
-Copyright 2022 Thijs Raymakers
+Copyright 2022-2023 Thijs Raymakers
 
 Licensed under the EUPL, Version 1.2 or – as soon they
 will be approved by the European Commission - subsequent
