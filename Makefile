@@ -28,24 +28,32 @@ help:
 .PHONY: help
 
 update: VENV
-	@echo "Fetching latest releases..."
+	@export CURRENT_GIT_TAG="$$(git describe --abbrev=0 --tags)"
+	echo "Current version is $$CURRENT_GIT_TAG"
+	echo "Fetching latest releases..."
 	git fetch --tags
-	export GIT_TAG="$$(git describe --abbrev=0 --tags)"
-	echo "Checkout out to latest release $$GIT_TAG"
-	git checkout "$$GIT_TAG"
+	export UPDATE_GIT_TAG="$$(git describe --tags $$(git rev-list --tags --max-count=1))"
+	if [[ "$$CURRENT_GIT_TAG" == "$$UPDATE_GIT_TAG" ]]; then
+		echo "Already on the latest release $$CURRENT_GIT_TAG!"
+		exit 0
+	fi
+	echo "Checkout out to latest release $$UPDATE_GIT_TAG"
+	git checkout "$$UPDATE_GIT_TAG"
 	echo "Updating dependencies..."
 	source venv/bin/activate
 	pip install -r requirements.txt
-	echo "Updated to version $$GIT_TAG"
-	git diff --name-only --no-index -- .env.example .env >/dev/null ||
-	(echo -e "\n#############################################################"
-	 echo -e   "# Your config differs from example config in .env.example!  #"
-	 echo -e   "# This is not an issue, but new configuration options might #"
-	 echo -e 	 "# not yet be present in your .env file.                     #"
-	 echo -e 	 "#                                                           #"
-	 echo -e 	 "#            The differences are shown below                #"
-	 echo -e   "#############################################################\n")
-	(git diff --no-index -- .env.example .env || true)
+	echo "Updated to version $$UPDATE_GIT_TAG"
+	if test -f ".env"; then
+		git diff --name-only --no-index -- .env.example .env >/dev/null ||
+		(echo -e "\n#############################################################"
+		 echo -e   "# Your config differs from example config in .env.example!  #"
+		 echo -e   "# This is not an issue, but new configuration options might #"
+		 echo -e 	 "# not yet be present in your .env file.                     #"
+		 echo -e 	 "#                                                           #"
+		 echo -e 	 "#            The differences are shown below                #"
+		 echo -e   "#############################################################\n")
+		(git diff --no-index -- .env.example .env || true)
+	fi
 .PHONY: update
 
 config: .env
