@@ -43,16 +43,21 @@ update: VENV
 	source venv/bin/activate
 	pip install -r requirements.txt
 	echo "Updated to version $$UPDATE_GIT_TAG"
-	if test -r ".env"; then
-		git diff --name-only --no-index -- .env.example .env >/dev/null ||
-		(echo -e "\n#############################################################"
-		 echo -e   "# Your config differs from example config in .env.example!  #"
-		 echo -e   "# This is not an issue, but new configuration options might #"
-		 echo -e 	 "# not yet be present in your .env file.                     #"
-		 echo -e 	 "#                                                           #"
-		 echo -e 	 "#            The differences are shown below                #"
-		 echo -e   "#############################################################\n")
-		(git diff --no-index -- .env.example .env || true)
+	if test -f ".env"; then
+		if test -r ".env"; then
+			git diff --name-only --no-index -- .env.example .env >/dev/null ||
+			(echo -e "\n#############################################################"
+			 echo -e   "# Your config differs from example config in .env.example!  #"
+			 echo -e   "# This is not an issue, but new configuration options might #"
+			 echo -e 	 "# not yet be present in your .env file.                     #"
+			 echo -e 	 "#                                                           #"
+			 echo -e 	 "#            The differences are shown below                #"
+			 echo -e   "#############################################################\n")
+			(git diff --no-index -- .env.example .env || true)
+		else
+			echo ".env file exists, but cannot be read"
+			exit 1
+		fi
 	fi
 .PHONY: update
 
