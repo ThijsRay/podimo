@@ -35,13 +35,13 @@ update: VENV
 	export UPDATE_GIT_TAG="$$(git describe --tags $$(git rev-list --tags --max-count=1))"
 	if [[ "$$CURRENT_GIT_TAG" == "$$UPDATE_GIT_TAG" ]]; then
 		echo "Already on the latest release $$CURRENT_GIT_TAG!"
-		exit 0
+	else
+		echo "Checkout out to latest release $$UPDATE_GIT_TAG"
+		git checkout "$$UPDATE_GIT_TAG"
 	fi
-	echo "Checkout out to latest release $$UPDATE_GIT_TAG"
-	git checkout "$$UPDATE_GIT_TAG"
 	echo "Updating dependencies..."
 	source venv/bin/activate
-	pip install -r requirements.txt
+	pip install -r requirements.txt >/dev/null
 	echo "Updated to version $$UPDATE_GIT_TAG"
 	if test -f ".env"; then
 		if test -r ".env"; then
