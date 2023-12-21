@@ -43,7 +43,7 @@ update: VENV
 	source venv/bin/activate
 	pip install -r requirements.txt
 	echo "Updated to version $$UPDATE_GIT_TAG"
-	if test -f ".env"; then
+	if test -r ".env"; then
 		git diff --name-only --no-index -- .env.example .env >/dev/null ||
 		(echo -e "\n#############################################################"
 		 echo -e   "# Your config differs from example config in .env.example!  #"
