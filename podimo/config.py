@@ -38,9 +38,9 @@ config = {
 PODIMO_HOSTNAME = str(config.get("PODIMO_HOSTNAME", "localhost:12104"))
 PODIMO_BIND_HOST = str(config.get("PODIMO_BIND_HOST", "127.0.0.1:12104"))
 PODIMO_PROTOCOL = str(config.get("PODIMO_PROTOCOL", "http"))
-HTTP_PROXY = str(config.get("HTTP_PROXY", None))
-ZENROWS_API = str(config.get("ZENROWS_API", None))
-SCRAPER_API = str(config.get("SCRAPER_API", None))
+HTTP_PROXY = config.get("HTTP_PROXY", None)
+ZENROWS_API = config.get("ZENROWS_API", None)
+SCRAPER_API = config.get("SCRAPER_API", None)
 CACHE_DIR = os.path.abspath(str(config.get("CACHE_DIR", "./cache")))
 
 # Enable extra logging in debugging mode
