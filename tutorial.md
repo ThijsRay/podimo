@@ -6,7 +6,7 @@ Welcome, this is a tutorial for absolute beginners. If you have no previous expe
 </div>
 
 ## If you do not yet have a working Raspberry Pi
-1. Flash Raspbian to your Pi. The [Raspberry Pi Imager](https://www.raspberrypi.com/software/) tool works well. Make sure to enable SSH if you don't have a display to connect your Pi to. For the remainder of this tutorial we'll assume you're logging into your Pi via SSH. Also make sure to set a login and password.
+1. Flash Raspbian to your Pi. The [Raspberry Pi Imager](https://www.raspberrypi.com/software/) tool works well. Make sure to enable SSH if you don't have a display to connect your Pi to. For the remainder of this tutorial we'll assume you're logging into your Pi remotely via SSH. Also make sure to set a login and password.
 2. Connect your Pi to power and wifi/ethernet.
 
 ### Connecting, logging in & installing
@@ -17,29 +17,28 @@ Welcome, this is a tutorial for absolute beginners. If you have no previous expe
 ssh yourusername@theIP-addressofyourpi
 ```
 
-5. Enter the following commands one by one to install the tool.
+5. Enter the following commands one by one to prepare your Pi for installing the tool. Don't worry if you get a notification that something is already installed; that's a good thing.
 
 ```sh
 sudo apt-get update && sudo apt-get upgrade -y
 sudo apt-get install git libxml2-dev libxslt-dev python3-venv -y
-git clone https://github.com/ThijsRay/podimo
-cd podimo
-sudo python3 -m venv env
-source env/bin/activate
-sudo chmod -R a+rwx env
-pip install -r requirements.txt
+export EDITOR=nano
 ```
 
-### Finetuning your configuration
-6. Good work! Now go to [ScraperAPI](https://scraperapi.com) and create a free account. After signing up you'll immediately see an API key. Copy this for later use.
-7. Enter the following:
+6. Now follow step 1 and 2 from the README file, which can be found [here](https://github.com/ThijsRay/podimo)
+
+### Finetuning your configuration before launch
+7. Good work! Now go to [ScraperAPI](https://scraperapi.com) and create a free account. After signing up you'll immediately see an API key. Copy this for later use.
+
+8. Enter the following:
 
 ```sh
-sudo nano .env
+make config
 ```
 
-8. An empty text editor now opens. Go to [this example file](https://github.com/ThijsRay/podimo/blob/main/.env.example) and copy the contents into the empty file. Now we'll change a few things.
-9. Under GENERAL SETTINGS:
+9. An text editor now opens. We're changing a few things here.
+
+10. Under GENERAL SETTINGS:
 
 PODIMO_HOSTNAME= should be followed by your public IP-address (which you can find [here](https://whatismyipaddress.com)). It should look like this:
 
@@ -53,66 +52,35 @@ PODIMO_BIND_HOST= you should change to the following:
 PODIMO_BIND_HOST="0.0.0.0:12104"
 ```
 
-10. Under PROXIES, remove the # in front of 3. SCRAPER_API
+11. Under PROXIES, remove the # in front of 3. SCRAPER_API
 
-Remove the # in front of SCRAPER_API and add the api key you copied earlier between the "".
+12. A little further down, remove the # in front of SCRAPER_API= and add the api key you copied earlier between the "".
 
-11. Hit ctrl-x, followed by y to save and close the file.
+13. Hit ctrl-x, followed by y to save and close the file.
 
 ### Starting the tool
-12. Type the following:
+14. Type the following:
 
 ```sh
-sudo nano /etc/systemd/system/podimo.service
+make start
 ```
 
-12. Again an empty file will open. Paste the following into this file:
 
-```sh
-[Unit]
-Description=Podimo Service
-After=network.target
-
-[Service]
-Type=simple
-User=YOUR_USERNAME
-Group=YOUR_USERNAME
-WorkingDirectory=/home/YOUR_USERNAME/podimo
-EnvironmentFile=/home/YOUR_USERNAME/podimo/.env
-ExecStart=/home/YOUR_USERNAME/podimo/env/bin/python /home/YOUR_USERNAME/podimo/main.py
-Restart=always
-LimitNOFILE=infinity
-
-[Install]
-WantedBy=multi-user.target
-```
-
-13. Replace in all five spots YOUR_USERNAME with your own username. You know, the name you chose at step 1.
-14. Hit ctrl-x, followed by y to save and close the file.
-15. Enter the following commands:
-
-```sh
-sudo chmod 644 /etc/systemd/system/podimo.service
-sudo systemctl daemon-reload
-sudo systemctl enable podimo.service
-sudo systemctl start podimo.service
-```
-
-Done! If all went well you can now enter your local IP-address:12104 into your browser and it'll show your tool.
+Done! If all went well you can now enter YOURIPADDRESS:12104 into your browser and it'll show your tool.
 
 ### A few smart things to end this tutorial
-16. Enable port forwarding to the external 12104 port on your router. This enables you to use the tool when you're not home.
-17. If you encounter problems and ask the community for help, they'll probably ask for logs. You can find these by entering one of the the following:
+15. Enable port forwarding to the external 12104 port on your router. This enables you to use the tool when you're not home.
+
+16. If you encounter problems and ask the community for help, they'll probably ask for logs. You can find these by entering one of the the following:
 
 ```sh
-sudo journalctl -u podimo.service --since "1 hour ago”
-sudo journalctl -u podimo.service --since "1 day ago”
+make logs
 ```
 
-18. If you want to update the tool, type the following while being in the /podimo folder:
+17. If you want to update the tool, type the following while being in the /podimo folder:
 
 ```sh
-git pull
+make update
 ```
 
 # Support
