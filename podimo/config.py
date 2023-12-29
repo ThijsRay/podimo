@@ -46,6 +46,11 @@ CACHE_DIR = os.path.abspath(str(config.get("CACHE_DIR", "./cache")))
 # Enable extra logging in debugging mode
 DEBUG = bool(str(config.get("DEBUG", None)).lower() in ['true', '1', 't', 'y', 'yes'])
 
+# Enable local credentials
+LOCAL_CREDENTIALS = bool(str(config.get("LOCAL_CREDENTIALS", None)).lower() in ['true', '1', 't', 'y', 'yes'])
+PODIMO_EMAIL = config.get("PODIMO_EMAIL", None)
+PODIMO_PASSWORD = config.get("PODIMO_PASSWORD", None)
+
 # Podimo's API uses GraphQL. This variable defines the endpoint where
 # the API can be found.
 GRAPHQL_URL = "https://podimo.com/graphql"
