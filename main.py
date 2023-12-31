@@ -204,6 +204,9 @@ def token_key(username, password):
 
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 async def serve_feed(username, password, podcast_id, region, locale):
+    
+    logging.debug(f"Feed request for podcast {podcast_id} from IP {request.remote_addr} with User-Agent:{request.user_agent}.")
+    
     # Check if it is a valid podcast id string
     if podcast_id_pattern.fullmatch(podcast_id) is None:
         return Response("Invalid podcast id format", 400, {})
@@ -213,7 +216,10 @@ async def serve_feed(username, password, podcast_id, region, locale):
     if locale not in LOCALES:
         return Response("Invalid locale", 400, {})
 
-    logging.debug(f"Feed request for podcast {podcast_id} from IP {request.remote_addr} with User-Agent:{request.user_agent}.")
+    # Check if url contains unique ID or podcastID in blocked list. If so, return HTTP code 410 GONE
+    if any(item in request.url for item in BLOCKED):
+        logging.debug(f"Blocked! Podcast {podcast_id} is on local block list")
+        return Response("Podcast is gone", 410, {}) 
     
     with cloudscraper.create_scraper() as scraper:
         scraper.proxies = proxies
@@ -374,5 +380,6 @@ Configuration:
 - TOKEN_CACHE_TIME: {TOKEN_CACHE_TIME} sec
 - PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
 - HEAD_CACHE_TIME: {HEAD_CACHE_TIME} sec
+- BLOCKING: {BLOCKED}
 """)
     asyncio.run(main())

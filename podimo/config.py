@@ -42,6 +42,7 @@ HTTP_PROXY = config.get("HTTP_PROXY", None)
 ZENROWS_API = config.get("ZENROWS_API", None)
 SCRAPER_API = config.get("SCRAPER_API", None)
 CACHE_DIR = os.path.abspath(str(config.get("CACHE_DIR", "./cache")))
+BLOCK_LIST_FILE = str(config.get("BLOCK_LIST_FILE", "./.block-list"))
 
 # Enable extra logging in debugging mode
 DEBUG = bool(str(config.get("DEBUG", None)).lower() in ['true', '1', 't', 'y', 'yes'])
@@ -101,3 +102,14 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%SZ",
     level=log_level
 )
+
+# Load block list from file '.block-list' if it exists
+BLOCKED = set()
+if os.path.exists(BLOCK_LIST_FILE):
+    with open (BLOCK_LIST_FILE, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith('#'): 
+                line = line.split(' ', 1)[0]
+                BLOCKED.add(line)
+#logging.debug(f'{BLOCKED}')  
