@@ -24,8 +24,7 @@ from podimo.utils import (is_correct_email_address, token_key,
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 import logging
-from apikeymanager import APIKeyManager
-
+from podimo.apikeymanager import APIKeyManager
 
 class PodimoClient:
     def __init__(self, username: str, password: str, region: str, locale: str):
