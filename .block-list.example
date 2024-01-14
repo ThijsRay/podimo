@@ -1,0 +1,9 @@
+# This file contains the podfcast ID or the random 10 digit 
+# identifier added to the podcast feed URLs that you wanted blocked.
+# Create a new line for every feed you want to block
+1234567890
+abcdefghij
+
+# Emptry lines are ignored
+
+# de9b2081-9fc5-489f-b9d3-d744ed9cab20 # Uncheck to block "Man man man, de podcast" ;-)

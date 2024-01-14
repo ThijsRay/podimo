@@ -24,12 +24,14 @@ any normal podcast player.
 {% endif %}
 
 <form action="./" method="post">
+  {% if need_credentials %}
   <label for="email">Your Podimo email address</label> <br />
   <input type="email" required placeholder="Podimo email address" name="email" id="email"><br />
 
   <label for="password">Your Podimo password</label><br />
   <input type="password" required placeholder="Podimo password" name="password" id="password"><br />
-
+  {% endif %}
+  
   <label for="podcast_id">Podcast ID (https://open.podimo.com/podcast/<b>THIS IS THE ID</b>)</label><br />
   <input placeholder="Podcast ID" required name="podcast_id" id="podcast_id" pattern="[0-9a-fA-F\-]+"><br />
 
