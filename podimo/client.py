@@ -76,10 +76,11 @@ class PodimoClient:
         if response.status_code == 403 and SCRAPER_API is not None:
             APIKeyManager.getInstance().set_key_inactive(active_key)
             await self.post(headers, query, variables, scraper)
-        if response is None:
+        elif response is None:
             raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
-        if response.status_code != 200:
+        elif response.status_code != 200:
             raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
+
         result = response.json()["data"]
         if result is None:
             raise RuntimeError(f"Podimo returned no valid data for query {query.strip()[:30]}")
