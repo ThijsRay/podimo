@@ -17,10 +17,10 @@ class APIKeyManager:
             raise Exception("This class is a singleton!")
         else:
             # Load API keys from config (environment variable)
-            self.api_keys = os.getenv('SCRAPER_API_KEYS', '').split(',')
+            self.api_keys = os.getenv('SCRAPER_API', '').split(',')
 
             if not self.api_keys or self.api_keys == ['']:
-                print("Warning: No API keys found in SCRAPER_API_KEYS")
+                print("Warning: No API keys found in SCRAPER_API")
 
             self.api_key_status = {key: {'active': True, 'next_available_time': None} for key in self.api_keys if key}
             APIKeyManager._instance = self
