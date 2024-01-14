@@ -74,7 +74,8 @@ You can create a free trial account for ScraperAPI
 
 1. Go to [dashboard.scraperapi.com/signup](https://dashboard.scraperapi.com/signup) and create a free account
 2. Copy your API key and make sure to add it to the `SCRAPER_API` environment variable
-
+   1. If the 1000 API call limit is not enough you can add more ScraperAPI keys to the environment variable by using a comma as delimiter 
+    2. e.g. `SCRAPER_API="11111,22222,3333"`
 ## Privacy
 The script keeps track of a few things in memory:
 - Your username and password, used to login and to create an access token. This is only used temporarily during a request itself.

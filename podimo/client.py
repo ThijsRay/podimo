@@ -24,8 +24,7 @@ from podimo.utils import (is_correct_email_address, token_key,
 from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
 from time import time
 import logging
-if ZENROWS_API is not None:
-    from zenrows import ZenRowsClient
+from podimo.apikeymanager import APIKeyManager
 
 class PodimoClient:
     def __init__(self, username: str, password: str, region: str, locale: str):
@@ -48,24 +47,37 @@ class PodimoClient:
     def generateHeaders(self, authorization):
         return gHdrs(authorization, self.locale)
 
-    async def post(self, headers, query, variables, scraper):
+
+    def get_url(self, scraper_api_active_key):
         if SCRAPER_API is not None:
-            POST_URL = f"https://api.scraperapi.com?api_key={SCRAPER_API}&url={GRAPHQL_URL}&keep_headers=true"
+            if scraper_api_active_key is not None:
+                POST_URL = f"https://api.scraperapi.com?api_key={scraper_api_active_key}&url={GRAPHQL_URL}&keep_headers=true"
+            else:
+                raise RuntimeError(f"No more active scraper api keys available")
         elif ZENROWS_API is not None:
-            scraper = ZenRowsClient(ZENROWS_API)
             POST_URL = GRAPHQL_URL
         else:
             POST_URL = GRAPHQL_URL
+        return POST_URL
+
+    async def post(self, headers, query, variables, scraper):
+        active_key = APIKeyManager.getInstance().get_active_key()
+        POST_URL = self.get_url(active_key)
         response = await async_wrap(scraper.post)(POST_URL,
                                         headers=headers,
                                         cookies=self.cookie_jar,
                                         json={"query": query, "variables": variables},
                                         timeout=(6.05, 30)
                                     )
-        if response is None:
+        if response.status_code == 403 and SCRAPER_API is not None:
+            logging.debug("Scraper API key %s has ran out of credits, marking as inactive and trying next one...", active_key)
+            APIKeyManager.getInstance().set_key_inactive(active_key)
+            return await self.post(headers, query, variables, scraper)
+        elif response is None:
             raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
-        if response.status_code != 200:
+        elif response.status_code != 200:
             raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
+
         result = response.json()["data"]
         if result is None:
             raise RuntimeError(f"Podimo returned no valid data for query {query.strip()[:30]}")

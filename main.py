@@ -19,34 +19,37 @@
 
 import asyncio
 import re
-import sys
-import logging
-from os import getenv
-from podimo.client import PodimoClient
-from feedgen.feed import FeedGenerator
-from mimetypes import guess_type
-from aiohttp import ClientSession, CookieJar
-from quart import Quart, Response, render_template, request
-from hashlib import sha256
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
-from urllib.parse import quote
-from podimo.config import *
-from podimo.utils import generateHeaders, randomHexId
-import podimo.cache as cache
-import cloudscraper
 import traceback
+from hashlib import sha256
+from mimetypes import guess_type
+from urllib.parse import quote
+
+import cloudscraper
+from aiohttp import ClientSession, CookieJar
+from feedgen.feed import FeedGenerator
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+from quart import Quart, Response, render_template, request
+
+import podimo.cache as cache
+from podimo.client import PodimoClient
+from podimo.config import *
+from podimo.config import SCRAPER_API, ZENROWS_API
+from podimo.utils import generateHeaders, randomHexId
 
 # Setup Quart, used for serving the web pages
 app = Quart(__name__)
 proxies = dict()
+if ZENROWS_API is not None:
+    from zenrows import ZenRowsClient
 
-#Setup logging
+# Setup logging
 logging.basicConfig(
     format="%(levelname)s | %(asctime)s | %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%SZ",
     level=logging.INFO,
 )
+
 
 def example():
     return f"""Example
@@ -62,13 +65,16 @@ Note that the username and password should be URL encoded. This can be done with
 a tool like https://gchq.github.io/CyberChef/#recipe=URL_Encode(true)
 """
 
+
 @app.after_request
 def allow_cors(response):
     response.headers.set('Access-Control-Allow-Origin', '*')
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST')
     response.headers.set('Cache-Control', 'max-age=900')
-    logging.debug(f"Incoming {request.method} request for '{request.url}' from User-Agent {request.user_agent} at {request.remote_addr}.")
+    logging.debug(
+        f"Incoming {request.method} request for '{request.url}' from User-Agent {request.user_agent} at {request.remote_addr}.")
     return response
+
 
 def authenticate():
     return Response(
@@ -83,6 +89,7 @@ You need to login with the correct credentials for Podimo.
         },
     )
 
+
 def initialize_client(username: str, password: str, region: str, locale: str) -> PodimoClient:
     client = PodimoClient(username, password, region, locale)
 
@@ -96,6 +103,7 @@ def initialize_client(username: str, password: str, region: str, locale: str) ->
         cache.cookie_jars[key] = CookieJar()
     client.cookie_jar = cache.cookie_jars[key]
     return client
+
 
 async def check_auth(username, password, region, locale, scraper):
     try:
@@ -113,7 +121,9 @@ async def check_auth(username, password, region, locale, scraper):
             traceback.print_exc()
     return None
 
+
 podcast_id_pattern = re.compile(r"[0-9a-fA-F\-]+")
+
 
 @app.route("/", methods=["POST", "GET"])
 async def index():
@@ -148,20 +158,21 @@ async def index():
             podcast_id = quote(str(podcast_id), safe="")
             region = quote(str(region), safe="")
             locale = quote(str(locale), safe="")
-            
+
             if LOCAL_CREDENTIALS:
                 url = f"{PODIMO_PROTOCOL}://{PODIMO_HOSTNAME}/feed/{podcast_id}.xml?{randomHexId(10)}&region={region}&locale={locale}"
             else:
                 email = quote(str(email), safe="")
                 comma = quote(',', safe="")
                 username = f"{email}{comma}{region}{comma}{locale}"
-                password = quote(str(password), safe="")             
+                password = quote(str(password), safe="")
                 url = f"{PODIMO_PROTOCOL}://{username}:{password}@{PODIMO_HOSTNAME}/feed/{podcast_id}.xml?{randomHexId(10)}&region={region}&locale={locale}"
-            
+
             logging.debug(f"Created an URL: {url}.")
             return await render_template("feed_location.html", url=url)
 
-    return await render_template("index.html", error=error, locales=LOCALES, regions=REGIONS, need_credentials=not(LOCAL_CREDENTIALS))
+    return await render_template("index.html", error=error, locales=LOCALES, regions=REGIONS,
+                                 need_credentials=not (LOCAL_CREDENTIALS))
 
 
 @app.errorhandler(404)
@@ -204,13 +215,13 @@ def token_key(username, password):
 
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
 async def serve_feed(username, password, podcast_id, region, locale):
-    
-    logging.debug(f"Feed request for podcast {podcast_id} from IP {request.remote_addr} with User-Agent:{request.user_agent}.")
-    
+    logging.debug(
+        f"Feed request for podcast {podcast_id} from IP {request.remote_addr} with User-Agent:{request.user_agent}.")
+
     # Check if it is a valid podcast id string
     if podcast_id_pattern.fullmatch(podcast_id) is None:
         return Response("Invalid podcast id format", 400, {})
-   
+
     if region not in [region_code for (region_code, _) in REGIONS]:
         return Response("Invalid region", 400, {})
     if locale not in LOCALES:
@@ -219,10 +230,12 @@ async def serve_feed(username, password, podcast_id, region, locale):
     # Check if url contains unique ID or podcastID in blocked list. If so, return HTTP code 410 GONE
     if any(item in request.url for item in BLOCKED):
         logging.debug(f"Blocked! Podcast {podcast_id} is on local block list")
-        return Response("Podcast is gone", 410, {}) 
-    
+        return Response("Podcast is gone", 410, {})
+
     with cloudscraper.create_scraper() as scraper:
         scraper.proxies = proxies
+        if ZENROWS_API is not None:
+            scraper = ZenRowsClient(ZENROWS_API)
         client = await check_auth(username, password, region, locale, scraper)
         if not client:
             return authenticate()
@@ -250,7 +263,7 @@ async def urlHeadInfo(session, id, url, locale):
 
     logging.debug(f"HEAD request to {url}")
     async with session.head(
-        url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
+            url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
     ) as response:
         content_length = 0
         content_type, _ = guess_type(url)
@@ -290,15 +303,17 @@ async def addFeedEntry(fg, episode, session, locale):
 
     url, duration = extract_audio_url(episode)
     if url is None:
-        return 
+        return
 
     fe.podcast.itunes_duration(duration)
     content_length, content_type = await urlHeadInfo(session, episode['id'], url, locale)
     fe.enclosure(url, content_length, content_type)
 
+
 def chunks(x, n):
     for i in range(0, len(x), n):
         yield x[i:i + n]
+
 
 async def podcastsToRss(podcast_id, data, locale):
     fg = FeedGenerator()
@@ -355,6 +370,7 @@ async def spawn_web_server():
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     await serve(app, config)
 
+
 async def main():
     if HTTP_PROXY:
         global proxies
@@ -362,6 +378,7 @@ async def main():
         proxies['https'] = HTTP_PROXY
     tasks = [spawn_web_server()]
     await asyncio.gather(*tasks)
+
 
 if __name__ == "__main__":
     if DEBUG:
