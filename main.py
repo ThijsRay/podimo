@@ -67,6 +67,7 @@ def allow_cors(response):
     response.headers.set('Access-Control-Allow-Origin', '*')
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST')
     response.headers.set('Cache-Control', 'max-age=900')
+    logging.debug(f"Incoming {request.method} request for '{request.url}' from User-Agent {request.user_agent} at {request.remote_addr}.")
     return response
 
 def authenticate():
@@ -125,10 +126,11 @@ async def index():
         region = form.get("region")
         locale = form.get("locale")
 
-        if email is None or email == "":
-            error += "Email is required"
-        if password is None or password == "":
-            error += "Password is required"
+        if not LOCAL_CREDENTIALS:
+            if email is None or email == "":
+                error += "Email is required"
+            if password is None or password == "":
+                error += "Password is required"
         if podcast_id is None or podcast_id == "":
             error += "Podcast ID is required"
         elif podcast_id_pattern.fullmatch(podcast_id) is None:
@@ -143,26 +145,23 @@ async def index():
             error += "Locale is not valid"
 
         if error == "":
-            email = quote(str(email), safe="")
+            podcast_id = quote(str(podcast_id), safe="")
             region = quote(str(region), safe="")
             locale = quote(str(locale), safe="")
+            
+            if LOCAL_CREDENTIALS:
+                url = f"{PODIMO_PROTOCOL}://{PODIMO_HOSTNAME}/feed/{podcast_id}.xml?{randomHexId(10)}&region={region}&locale={locale}"
+            else:
+                email = quote(str(email), safe="")
+                comma = quote(',', safe="")
+                username = f"{email}{comma}{region}{comma}{locale}"
+                password = quote(str(password), safe="")             
+                url = f"{PODIMO_PROTOCOL}://{username}:{password}@{PODIMO_HOSTNAME}/feed/{podcast_id}.xml?{randomHexId(10)}&region={region}&locale={locale}"
+            
+            logging.debug(f"Created an URL: {url}.")
+            return await render_template("feed_location.html", url=url)
 
-            comma = quote(',', safe="")
-            username = f"{email}{comma}{region}{comma}{locale}"
-
-            password = quote(str(password), safe="")
-            podcast_id = quote(str(podcast_id), safe="")
-
-            return await render_template("feed_location.html", 
-                                         username=username,
-                                         password=password,
-                                         HOSTNAME=PODIMO_HOSTNAME,
-                                         PROTOCOL=PODIMO_PROTOCOL,
-                                         podcast_id=podcast_id,
-                                         random_id=randomHexId(10)
-            )
-
-    return await render_template("index.html", error=error, locales=LOCALES, regions=REGIONS)
+    return await render_template("index.html", error=error, locales=LOCALES, regions=REGIONS, need_credentials=not(LOCAL_CREDENTIALS))
 
 
 @app.errorhandler(404)
@@ -174,11 +173,18 @@ async def not_found(error):
 
 @app.route("/feed/<string:podcast_id>.xml")
 async def serve_basic_auth_feed(podcast_id):
-    auth = request.authorization
-    if not auth:
-        return authenticate()
+    if LOCAL_CREDENTIALS:
+        args = request.args
+        region = args.get("region")
+        locale = args.get("locale")
+        return await serve_feed(PODIMO_EMAIL, PODIMO_PASSWORD, podcast_id, region, locale)
     else:
-        return await serve_feed(auth.username, auth.password, podcast_id)
+        auth = request.authorization
+        if not auth:
+            return authenticate()
+        else:
+            username, region, locale = split_username_region_locale(auth.username)
+            return await serve_feed(username, auth.password, podcast_id, region, locale)
 
 
 def split_username_region_locale(string):
@@ -197,17 +203,24 @@ def token_key(username, password):
 
 
 @app.route("/feed/<string:username>/<string:password>/<string:podcast_id>.xml")
-async def serve_feed(username, password, podcast_id):
+async def serve_feed(username, password, podcast_id, region, locale):
+    
+    logging.debug(f"Feed request for podcast {podcast_id} from IP {request.remote_addr} with User-Agent:{request.user_agent}.")
+    
     # Check if it is a valid podcast id string
     if podcast_id_pattern.fullmatch(podcast_id) is None:
         return Response("Invalid podcast id format", 400, {})
-
-    username, region, locale = split_username_region_locale(username)
+   
     if region not in [region_code for (region_code, _) in REGIONS]:
         return Response("Invalid region", 400, {})
     if locale not in LOCALES:
         return Response("Invalid locale", 400, {})
 
+    # Check if url contains unique ID or podcastID in blocked list. If so, return HTTP code 410 GONE
+    if any(item in request.url for item in BLOCKED):
+        logging.debug(f"Blocked! Podcast {podcast_id} is on local block list")
+        return Response("Podcast is gone", 410, {}) 
+    
     with cloudscraper.create_scraper() as scraper:
         scraper.proxies = proxies
         client = await check_auth(username, password, region, locale, scraper)
@@ -355,6 +368,7 @@ if __name__ == "__main__":
         logging.info(f"""Spawning server on {PODIMO_BIND_HOST}
 Configuration: 
 - DEBUG: {DEBUG}
+- LOCAL CREDENTIALS: {LOCAL_CREDENTIALS} ({PODIMO_EMAIL})
 - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
 - PODIMO_BIND_HOST: {PODIMO_BIND_HOST}
 - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
@@ -366,5 +380,6 @@ Configuration:
 - TOKEN_CACHE_TIME: {TOKEN_CACHE_TIME} sec
 - PODCAST_CACHE_TIME: {PODCAST_CACHE_TIME} sec
 - HEAD_CACHE_TIME: {HEAD_CACHE_TIME} sec
+- BLOCKING: {BLOCKED}
 """)
     asyncio.run(main())
