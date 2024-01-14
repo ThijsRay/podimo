@@ -49,11 +49,8 @@ class PodimoClient:
 
 
     def get_url(self, scraper_api_active_key):
-        logging.debug("Getting url for scraper, we have a key: " + scraper_api_active_key)
         if SCRAPER_API is not None:
-            logging.debug("SCRAPER_API is not None so continuing")
             if scraper_api_active_key is not None:
-                logging.debug("Continuin with scraper api, active key is " + scraper_api_active_key)
                 POST_URL = f"https://api.scraperapi.com?api_key={scraper_api_active_key}&url={GRAPHQL_URL}&keep_headers=true"
             else:
                 raise RuntimeError(f"No more active scraper api keys available")
@@ -65,7 +62,6 @@ class PodimoClient:
 
     async def post(self, headers, query, variables, scraper):
         active_key = APIKeyManager.getInstance().get_active_key()
-        logging.debug("Fetched active key: {}".format(active_key))
         POST_URL = self.get_url(active_key)
         response = await async_wrap(scraper.post)(POST_URL,
                                         headers=headers,
@@ -74,6 +70,7 @@ class PodimoClient:
                                         timeout=(6.05, 30)
                                     )
         if response.status_code == 403 and SCRAPER_API is not None:
+            logging.debug("Scraper API key %s has ran out of credits, marking as inactive and trying next one...", active_key)
             APIKeyManager.getInstance().set_key_inactive(active_key)
             return await self.post(headers, query, variables, scraper)
         elif response is None:
