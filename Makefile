@@ -53,7 +53,7 @@ update: VENV
 			 echo -e 	 "#                                                           #"
 			 echo -e 	 "#            The differences are shown below                #"
 			 echo -e   "#############################################################\n")
-			(git diff --no-index -- .env.example .env || true)
+			(git diff --no-index -- .env .env.example || true)
 		else
 			echo ".env file exists, but cannot be read"
 			exit 1
