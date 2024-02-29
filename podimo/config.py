@@ -68,6 +68,9 @@ PODCAST_CACHE_TIME = int(config.get("PODCAST_CACHE_TIME", "21600"))  # Default =
 # The time that the content information is cached
 HEAD_CACHE_TIME = int(config.get("HEAD_CACHE_TIME", 7 * 60 * 60 * 24))  # seconds = 7 days by default
 
+# Whether the feeds generated with this tool should show up in public podcast catalogues
+PUBLIC_FEEDS = bool(str(config.get("PUBLIC_FEEDS", None)).lower() in ['true', '1', 't', 'y', 'yes'])
+
 LOCALES = [
         'nl-NL',
         'de-DE',
@@ -112,4 +115,3 @@ if os.path.exists(BLOCK_LIST_FILE):
             if line and not line.startswith('#'): 
                 line = line.split(' ', 1)[0]
                 BLOCKED.add(line)
-#logging.debug(f'{BLOCKED}')  

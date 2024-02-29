@@ -336,6 +336,9 @@ async def podcastsToRss(podcast_id, data, locale):
             artist = last_episode["artist"]
         fg.author({"name": artist})
 
+        if not PUBLIC_FEEDS:
+            fg.podcast.itunes_block(True)
+
     async with ClientSession() as session:
         for chunk in chunks(episodes, 5):
             await asyncio.gather(
@@ -372,6 +375,7 @@ Configuration:
 - PODIMO_HOSTNAME: {PODIMO_HOSTNAME}
 - PODIMO_BIND_HOST: {PODIMO_BIND_HOST}
 - PODIMO_PROTOCOL: {PODIMO_PROTOCOL}
+- PUBLIC_FEEDS: {PUBLIC_FEEDS}
 - HTTP_PROXY: {HTTP_PROXY}
 - ZENROWS_API: {ZENROWS_API}
 - SCRAPER_API: {SCRAPER_API}
