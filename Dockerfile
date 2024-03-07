@@ -4,6 +4,7 @@ COPY . /src
 
 WORKDIR /src
 
-RUN pip3 install -r requirements.txt
+RUN apk update && apk add libxml2-dev libxslt-dev
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 ENTRYPOINT [ "python3", "main.py" ]
