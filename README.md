@@ -35,26 +35,25 @@ A complete list of all configuration options can be found in the [.env.example f
 
 ## Instructions for self-hosting with Docker
 
-1. Clone this repository and enter the newly created directory
+1. Pull the Docker image with
+
 ```sh
-git clone https://github.com/ThijsRay/podimo
-cd podimo
+docker pull ghcr.io/thijsray/podimo:latest
 ```
 
-2. Build the Docker image
-```sh
-docker build -t podimo:latest .
-```
-
-3. Run the Docker image.
+2. Run the Docker image.
 Make sure you set the correct environment variables if you want to configure any variables.
 See [.env.example](.env.example) for a full list
 of configuration options.
 ```sh
-docker run --rm -e PODIMO_BIND_HOST=0.0.0.0:12104 -p 12104:12104 -v $(pwd)/cache:/src/cache podimo:latest
+docker run --rm \
+    -e PODIMO_BIND_HOST=0.0.0.0:12104 \
+    -p 12104:12104 \
+    -v $(pwd)/cache:/src/cache \
+    ghcr.io/thijsray/podimo:latest
 ```
 
-4. Visit http://localhost:12104. You should see the site now!
+3. Visit http://localhost:12104. You should see the site now!
 
 ## Configuration
 A complete list of all configuration options can be found in the [.env.example file](.env.example)
