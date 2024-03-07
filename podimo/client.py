@@ -207,7 +207,7 @@ class PodimoClient:
         """
         variables = {
             "podcastId": podcast_id,
-            "limit": 500,
+            "limit": 100,
             "offset": 0,
             "sorting": "PUBLISHED_DESCENDING",
         }
