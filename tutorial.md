@@ -52,9 +52,7 @@ PODIMO_BIND_HOST= you should change to the following:
 PODIMO_BIND_HOST="0.0.0.0:12104"
 ```
 
-11. Under PROXIES, remove the # in front of 3. SCRAPER_API
-
-12. A little further down, remove the # in front of SCRAPER_API= and add the api key you copied earlier between the "".
+12. Under PROXIES, remove the # in front of SCRAPER_API= and add the api key you copied earlier between the "".
 
 13. Hit ctrl-x, followed by y to save and close the file.
 
