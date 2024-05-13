@@ -284,9 +284,11 @@ def extract_audio_url(episode):
 
 async def addFeedEntry(fg, episode, session, locale):
     fe = fg.add_entry()
+    fe.guid(episode["id"])
     fe.title(episode["title"])
     fe.description(episode["description"])
-    fe.pubDate(episode["datetime"])
+    fe.pubDate(episode["publishDatetime"])
+    fe.podcast.itunes_image(episode["imageUrl"])
 
     url, duration = extract_audio_url(episode)
     if url is None:
@@ -334,7 +336,7 @@ async def podcastsToRss(podcast_id, data, locale):
         artist = podcast["authorName"]
         if artist is None:
             artist = last_episode["artist"]
-        fg.author({"name": artist})
+        fg.podcast.itunes_author(artist)
 
         if not PUBLIC_FEEDS:
             fg.podcast.itunes_block(True)
