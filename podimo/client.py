@@ -206,19 +206,34 @@ class PodimoClient:
                 }
             }
         """
-        variables = {
-            "podcastId": podcast_id,
-            "limit": 100,
-            "offset": 0,
-            "sorting": "PUBLISHED_DESCENDING",
-        }
-        result = await self.post(headers, query, variables, scraper)
-        # podcastName = result[0]['podcastName']
-        podcastName = self.getPodcastName(result)
-        logging.debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
+
+        limit = 100
+        offset = 0
+        while True:
+            variables = {
+                "podcastId": podcast_id,
+                "limit": limit,
+                "offset": offset,
+                "sorting": "PUBLISHED_DESCENDING",
+            }
+            result = await self.post(headers, query, variables, scraper)
+            if offset == 0:
+                # podcastName = result[0]['podcastName']
+                podcastName = self.getPodcastName(result)
+                logging.debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
+                fullResult = result
+            else:
+                fullResult["episodes"] += result["episodes"]
+            numEpisodes = len(result["episodes"])
+            if numEpisodes == limit:
+                logging.debug(f"Fetched {numEpisodes} episodes; fetching more...")
+                offset += limit
+            else:
+                logging.debug(f"Fetched {numEpisodes} episodes; no more to fetch")
+                break
         
-        insertIntoPodcastCache(podcast_id, result)
-        return result
+        insertIntoPodcastCache(podcast_id, fullResult)
+        return fullResult
 
     def getPodcastName (self, podcast):
         return list(podcast.values())[1]["title"]
