@@ -25,7 +25,7 @@ from os import getenv
 from podimo.client import PodimoClient
 from feedgen.feed import FeedGenerator
 from mimetypes import guess_type
-from aiohttp import ClientSession, CookieJar
+from aiohttp import ClientSession, CookieJar, ClientTimeout
 from quart import Quart, Response, render_template, request
 from hashlib import sha256
 from hypercorn.config import Config
@@ -248,20 +248,34 @@ async def urlHeadInfo(session, id, url, locale):
     if entry:
         return entry
 
-    logging.debug(f"HEAD request to {url}")
-    async with session.head(
-        url, allow_redirects=True, headers=generateHeaders(None, locale), timeout=3.05
-    ) as response:
-        content_length = 0
-        content_type, _ = guess_type(url)
-        if "content-length" in response.headers:
-            content_length = response.headers["content-length"]
-        if content_type == None and "content-type" in response.headers:
-            content_type = response.headers["content-type"]
-        else:
-            content_type = "audio/mpeg"
-        cache.insertIntoHeadCache(id, content_length, content_type)
-        return (content_length, content_type)
+    retries = 3  # Number of retries
+    timeout = ClientTimeout(total=10)  # 10 seconds timeout for each try
+
+    for attempt in range(retries):
+        try:
+            logging.debug(f"HEAD request to {url} (Attempt {attempt + 1})")
+            async with session.head(url, allow_redirects=True,
+                                    headers=generateHeaders(None, locale),
+                                    timeout=timeout) as response:
+                content_length = 0
+                content_type, _ = guess_type(url)
+                if 'content-length' in response.headers:
+                    content_length = response.headers['content-length']
+                if content_type is None and 'content-type' in response.headers:
+                    content_type = response.headers['content-type']
+                else:
+                    content_type = 'audio/mpeg'
+                cache.insertIntoHeadCache(id, content_length, content_type)
+                return (content_length, content_type)
+
+        except asyncio.TimeoutError:
+            if attempt < retries - 1:
+                logging.info(f"Retrying HEAD request to {url} (Attempt {attempt + 2})")
+                await asyncio.sleep(1)  # Wait for 1 second before retrying
+            else:
+                logging.error(f"All retries failed for HEAD request to {url}")
+                raise  # Re-raise the last exception if all retries fail
+
 
 
 def extract_audio_url(episode):
@@ -287,13 +301,13 @@ async def addFeedEntry(fg, episode, session, locale):
     fe.guid(episode["id"])
     fe.title(episode["title"])
     fe.description(episode["description"])
-    fe.pubDate(episode["publishDatetime"])
+    fe.pubDate(episode.get("publishDatetime", episode.get("datetime")))
     fe.podcast.itunes_image(episode["imageUrl"])
 
     url, duration = extract_audio_url(episode)
     if url is None:
         return 
-
+    logging.debug(f"Found podcast '{episode['title']}'")
     fe.podcast.itunes_duration(duration)
     content_length, content_type = await urlHeadInfo(session, episode['id'], url, locale)
     fe.enclosure(url, content_length, content_type)
