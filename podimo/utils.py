@@ -21,6 +21,7 @@ from email.utils import parseaddr
 from random import choice, randint
 from hashlib import sha256
 import asyncio
+import requests
 from functools import wraps, partial
 
 def randomHexId(length: int):
@@ -68,3 +69,9 @@ def async_wrap(func):
         pfunc = partial(func, *args, **kwargs)
         return await loop.run_in_executor(executor, pfunc)
     return run
+
+def video_exists_at_url(url: str) -> bool:
+    res = requests.get(url)
+    if res.text.strip().startswith("#EXTM3U"):
+        return True
+    return False

@@ -32,7 +32,7 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from urllib.parse import quote
 from podimo.config import *
-from podimo.utils import generateHeaders, randomHexId
+from podimo.utils import generateHeaders, randomHexId, video_exists_at_url
 import podimo.cache as cache
 import cloudscraper
 import traceback
@@ -299,14 +299,33 @@ def extract_audio_url(episode):
 async def addFeedEntry(fg, episode, session, locale):
     fe = fg.add_entry()
     fe.guid(episode["id"])
-    fe.title(episode["title"])
-    fe.description(episode["description"])
-    fe.pubDate(episode.get("publishDatetime", episode.get("datetime")))
-    fe.podcast.itunes_image(episode["imageUrl"])
 
     url, duration = extract_audio_url(episode)
     if url is None:
-        return 
+        return
+
+    # Generate the video url and paste it as prefix in the description :')
+    ep_id = url.split("/")[-1].replace(".mp3", "")
+    hls_url = f"https://cdn.podimo.com/hls-media/{ep_id}/stream_video_high/stream.m3u8"
+
+    if VIDEO_ENABLED:
+        if VIDEO_CHECK_ENABLED:
+            if video_exists_at_url(hls_url):
+                fe.description(
+                    f"Video URL found at: {hls_url} (experimental) || {episode['description']}"
+                )
+                fe.title(episode["title"] + VIDEO_TITLE_SUFFIX)
+            else:
+                fe.description(f"Video URL: {hls_url} (not verified) || {episode['description']}")
+                fe.title(episode["title"])
+
+    else:
+        fe.description(episode["description"])
+        fe.title(episode["title"])
+
+    fe.pubDate(episode.get("publishDatetime", episode.get("datetime")))
+    fe.podcast.itunes_image(episode["imageUrl"])
+
     logging.debug(f"Found podcast '{episode['title']}'")
     fe.podcast.itunes_duration(duration)
     content_length, content_type = await urlHeadInfo(session, episode['id'], url, locale)
