@@ -55,6 +55,14 @@ docker run --rm \
 
 3. Visit http://localhost:12104. You should see the site now!
 
+## HLS fallback audio
+
+Podcast clients without HLS support receive an episode-specific URL such as
+`/audio/dummy-<hash>.mp3` as their standard RSS enclosure. Every generated URL
+serves the same physical fallback file at `audio/dummy.mp3`. The legacy
+`/audio/dummy.mp3` URL remains available. A reverse proxy may expose these URLs
+under a prefix such as `/pc/audio/`.
+
 ## Configuration
 A complete list of all configuration options can be found in the [.env.example file](.env.example)
 

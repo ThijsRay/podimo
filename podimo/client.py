@@ -17,15 +17,18 @@
 # See the Licence for the specific language governing
 # permissions and limitations under the Licence.
 
-from podimo.config import GRAPHQL_URL, SCRAPER_API, ZENROWS_API
-from podimo.utils import (is_correct_email_address, token_key,
-                          randomFlyerId, generateHeaders as gHdrs,
-                          async_wrap)
-from podimo.cache import insertIntoPodcastCache, getCacheEntry, podcast_cache
-from time import time
 import logging
+from time import time
+
+from podimo.cache import getCacheEntry, insertIntoPodcastCache, podcast_cache
+from podimo.config import GRAPHQL_URL, SCRAPER_API, ZENROWS_API
+from podimo.utils import async_wrap
+from podimo.utils import generateHeaders as gHdrs
+from podimo.utils import is_correct_email_address, randomFlyerId, token_key
+
 if ZENROWS_API is not None:
     from zenrows import ZenRowsClient
+
 
 class PodimoClient:
     def __init__(self, username: str, password: str, region: str, locale: str):
@@ -56,19 +59,26 @@ class PodimoClient:
             POST_URL = GRAPHQL_URL
         else:
             POST_URL = GRAPHQL_URL
-        response = await async_wrap(scraper.post)(POST_URL,
-                                        headers=headers,
-                                        cookies=self.cookie_jar,
-                                        json={"query": query, "variables": variables},
-                                        timeout=(6.05, 30)
-                                    )
+        response = await async_wrap(scraper.post)(
+            POST_URL,
+            headers=headers,
+            cookies=self.cookie_jar,
+            json={"query": query, "variables": variables},
+            timeout=(6.05, 30),
+        )
         if response is None:
-            raise RuntimeError(f"Could not receive response for query: {query.strip()[:30]}...")
+            raise RuntimeError(
+                f"Could not receive response for query: {query.strip()[:30]}..."
+            )
         if response.status_code != 200:
-            raise RuntimeError(f"Podimo returned an error code. Response code was: {response.status_code} for query \"{query.strip()[:30]}...\"")
+            raise RuntimeError(
+                f'Podimo returned an error code. Response code was: {response.status_code} for query "{query.strip()[:30]}..."'
+            )
         result = response.json()["data"]
         if result is None:
-            raise RuntimeError(f"Podimo returned no valid data for query {query.strip()[:30]}")
+            raise RuntimeError(
+                f"Podimo returned no valid data for query {query.strip()[:30]}"
+            )
         return result
 
     # This gets the authentication token that is required for subsequent requests
@@ -90,16 +100,21 @@ class PodimoClient:
                 }
             }
         """
-        variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
+        variables = {
+            "locale": self.locale,
+            "countryCode": self.region,
+            "appsFlyerId": randomFlyerId(),
+        }
         result = await self.post(headers, query, variables, scraper)
         tokenWithPreregisterUser = result["tokenWithPreregisterUser"]
         if not tokenWithPreregisterUser:
             raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser")
         self.preauth_token = result["tokenWithPreregisterUser"]["token"]
         if not self.preauth_token:
-            raise RuntimeError("Podimo did not provide a tokenWithPreregisterUser token")
+            raise RuntimeError(
+                "Podimo did not provide a tokenWithPreregisterUser token"
+            )
         return self.preauth_token
-
 
     # Gets an "onboarding ID" that is used during login
     async def getOnboardingId(self, scraper):
@@ -112,19 +127,22 @@ class PodimoClient:
                 }
             }
         """
-        variables = {"locale": self.locale, "countryCode": self.region, "appsFlyerId": randomFlyerId()}
+        variables = {
+            "locale": self.locale,
+            "countryCode": self.region,
+            "appsFlyerId": randomFlyerId(),
+        }
         result = await self.post(headers, query, variables, scraper)
         self.prereg_id = result["userOnboardingFlow"]["id"]
         return self.prereg_id
 
-
     async def podimoLogin(self, scraper):
-            await self.getPreregisterToken(scraper)
-            await self.getOnboardingId(scraper)
+        await self.getPreregisterToken(scraper)
+        await self.getOnboardingId(scraper)
 
-            headers = self.generateHeaders(self.preauth_token)
-            logging.debug(f"AuthorizationAuthorize user: {self.username}")
-            query = """
+        headers = self.generateHeaders(self.preauth_token)
+        logging.debug(f"AuthorizationAuthorize user: {self.username}")
+        query = """
                 query AuthorizationAuthorize($email: String!, $password: String!, $locale: String!, $preregisterId: String) {
                     tokenWithCredentials(
                     email: $email
@@ -136,29 +154,33 @@ class PodimoClient:
                     }
                 }
             """
-            variables = {
-                "email": self.username,
-                "password": self.password,
-                "locale": self.locale,
-                "preregisterId": self.prereg_id,
-            }
-            result = await self.post(headers, query, variables, scraper)
-            tokenWithCredentials = result["tokenWithCredentials"]
-            if not tokenWithCredentials:
-                raise ValueError("Invalid Podimo credentials, did not receive tokenWithCredentials")
+        variables = {
+            "email": self.username,
+            "password": self.password,
+            "locale": self.locale,
+            "preregisterId": self.prereg_id,
+        }
+        result = await self.post(headers, query, variables, scraper)
+        tokenWithCredentials = result["tokenWithCredentials"]
+        if not tokenWithCredentials:
+            raise ValueError(
+                "Invalid Podimo credentials, did not receive tokenWithCredentials"
+            )
 
-            self.token = result["tokenWithCredentials"]["token"]
-            if self.token:
-                return self.token
-            else:
-                raise ValueError("Invalid Podimo credentials, did not receive token")
+        self.token = result["tokenWithCredentials"]["token"]
+        if self.token:
+            return self.token
+        else:
+            raise ValueError("Invalid Podimo credentials, did not receive token")
 
     async def getPodcasts(self, podcast_id, scraper):
         podcast = getCacheEntry(podcast_id, podcast_cache)
         if podcast:
             timestamp, _ = podcast_cache[podcast_id]
             podcastName = self.getPodcastName(podcast)
-            logging.debug(f"Got podcast '{podcastName}' ({podcast_id}) from cache ({int(timestamp-time())} seconds left)")
+            logging.debug(
+                f"Got podcast '{podcastName}' ({podcast_id}) from cache ({int(timestamp-time())} seconds left)"
+            )
             return podcast
 
         headers = self.generateHeaders(self.token)
@@ -220,7 +242,9 @@ class PodimoClient:
             if offset == 0:
                 # podcastName = result[0]['podcastName']
                 podcastName = self.getPodcastName(result)
-                logging.debug(f"Fetched podcast '{podcastName}' ({podcast_id}) directly")
+                logging.debug(
+                    f"Fetched podcast '{podcastName}' ({podcast_id}) directly"
+                )
                 fullResult = result
             else:
                 fullResult["episodes"] += result["episodes"]
@@ -231,10 +255,9 @@ class PodimoClient:
             else:
                 logging.debug(f"Fetched {numEpisodes} episodes; no more to fetch")
                 break
-        
+
         insertIntoPodcastCache(podcast_id, fullResult)
         return fullResult
 
-    def getPodcastName (self, podcast):
+    def getPodcastName(self, podcast):
         return list(podcast.values())[1]["title"]
-       
